@@ -40,11 +40,43 @@ server-side export / staged data ─▶ same signature ────────�
 
 ## Screenshots
 
-> Screenshots pending. Drop images into `docs/screenshots/` and replace the placeholders below.
+**Scenario 1 · Embed a report** — scenario panel on the left, the embedded report in the middle,
+the freshly signed embed URL bottom right:
 
-| Integration console | Embedded report |
-| --- | --- |
-| `docs/screenshots/console.png` | `docs/screenshots/embedded-report.png` |
+![Integration console: embedding a report](docs/screenshots/console.png)
+
+**Scenario 2 · Receive report events** — clicking a cell with a "send event" link delivers a custom
+event and its payload to the host:
+
+![Receiving report events](docs/screenshots/events.png)
+
+**Scenario 3 · Call the report from the host** — `getState` / `getCellValue` through the SDK,
+results land in the invoke pane:
+
+![Host invoke](docs/screenshots/invoke.png)
+
+<details>
+<summary>More: discovery / staged datasets / the report itself</summary>
+
+**Scenario 4 · Discovery**: the report tree is flattened into a clickable list; picking one writes
+back to the shared `reportId`, and the raw JSON stays in the discovery pane.
+
+![Report discovery](docs/screenshots/discover.png)
+
+**Scenario 6 · Staged datasets**: upload rows, get a token, preview with it as `_dataIds`.
+
+![Staged datasets](docs/screenshots/staged.png)
+
+**The embedded report on its own** (as opened in a new window):
+
+![Embedded report](docs/screenshots/embedded-report.png)
+
+</details>
+
+> About these screenshots: the console, the signing flow, and the event/invoke protocol are all
+> **really running**. The report content is **sample data** rendered by a local mock report service —
+> no real business data. Point the demo at your own Sight Report deployment and the middle pane
+> becomes your report.
 
 ## Quick start
 

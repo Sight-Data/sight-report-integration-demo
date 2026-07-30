@@ -40,11 +40,38 @@
 
 ## 截图
 
-> 截图待补充。把图片放进 `docs/screenshots/` 后，替换下面的占位即可。
+**场景 1 · 嵌入查看报表** —— 左侧场景面板、中间嵌入的报表、右下是后端刚签出的 embed URL：
 
-| 集成控制台 | 嵌入报表 |
-| --- | --- |
-| `docs/screenshots/console.png` | `docs/screenshots/embedded-report.png` |
+![集成控制台：嵌入查看报表](docs/screenshots/console.png)
+
+**场景 2 · 接收报表事件** —— 点报表里配了「发送事件」的单元格，宿主收到自定义事件与 payload：
+
+![接收报表事件](docs/screenshots/events.png)
+
+**场景 3 · 宿主调用报表** —— 通过 SDK 调 `getState` / `getCellValue`，返回值进「调用结果」：
+
+![宿主调用报表](docs/screenshots/invoke.png)
+
+<details>
+<summary>更多截图：报表发现 / 外部数据集 / 报表本体</summary>
+
+**场景 4 · 报表发现**：目录树结果被扁平成可点列表，选中即写回共享 `reportId`，原始 JSON 留在「发现结果」。
+
+![报表发现](docs/screenshots/discover.png)
+
+**场景 6 · 外部数据集**：上传数据拿到 token，预览时作为 `_dataIds` 带上。
+
+![外部数据集](docs/screenshots/staged.png)
+
+**嵌入的报表本体**（新窗口打开的效果）：
+
+![嵌入的报表](docs/screenshots/embedded-report.png)
+
+</details>
+
+> 关于截图：控制台、签名链路、事件与 invoke 协议都是**真实运行**的；报表内容是**演示用示例数据**，
+> 由一个本地 mock 报表服务渲染（不含任何真实业务数据）。你接上自己的 Sight Report
+> 部署后，中间那块就是你自己的报表。
 
 ## 快速开始
 

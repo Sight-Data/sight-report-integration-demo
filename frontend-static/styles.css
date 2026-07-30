@@ -814,7 +814,8 @@ code {
 /* ── 舞台：预览 + 观察窗 ────────────────────────── */
 .stage {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) 250px;
+  /* 观察窗按视口高度收缩，保证矮屏（~700px）上报表预览仍有大半屏 */
+  grid-template-rows: minmax(0, 1fr) clamp(150px, 26vh, 260px);
   gap: 12px;
 }
 

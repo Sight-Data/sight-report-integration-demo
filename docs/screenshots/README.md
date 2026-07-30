@@ -1,18 +1,23 @@
 # Screenshots
 
-README 里引用的截图放在这个目录。建议文件名与用途：
+README 里引用的截图。**控制台、签名链路、事件与 invoke 协议都是真实运行的**；报表内容是演示用
+示例数据（销售/区域这类通用假数据），由一个本地 mock 报表服务渲染，不含任何真实业务数据、
+客户名称或内网地址。
 
-| 文件名 | 内容 | 建议尺寸 |
-| --- | --- | --- |
-| `console.png` | 整屏：共享条 + 场景 1（嵌入查看，代码片段展开）+ 报表预览 | 宽 ≥ 1600px |
-| `embedded-report.png` | 嵌入渲染的报表本体（分组小计、交叉表、图表等） | 宽 ≥ 1400px |
-| `events.png` | 场景 2：事件日志里的 `report:loaded` 与自定义单元格事件 | 宽 ≥ 1000px |
-| `discover.png` | 场景 4：报表发现列表（点选后写回共享 reportId） | 宽 ≥ 1000px |
-| `staged-dataset.png` | 场景 6：上传 token 后的带 `_dataIds` 预览 | 宽 ≥ 1000px |
+| 文件 | 内容 |
+| --- | --- |
+| `console.png` | 场景 1：共享上下文 + 嵌入查看 + 报表预览 + embed URL |
+| `events.png` | 场景 2：单元格「发送事件」→ 宿主收到自定义事件与 payload |
+| `invoke.png` | 场景 3：SDK `getState` / `getCellValue` 的返回值 |
+| `discover.png` | 场景 4：目录树结果扁平成可点列表 + 原始 JSON |
+| `staged.png` | 场景 6：上传外部数据集拿到 token |
+| `embedded-report.png` | 嵌入的报表本体（新窗口效果） |
 
-截图注意：
+## 想自己重拍
 
-- 用内置 demo 数据（销售 / 库存 / 财务这类通用假数据），不要出现任何真实客户名称、内网地址或人名
-- 浏览器窗口调到 1600×1000 左右，缩放 100%
-- 截完后把 README.md 与 README.zh-CN.md 里「截图」一节的占位表格替换成
-  `![集成控制台](docs/screenshots/console.png)` 形式的图片引用
+1. 起 demo 后端，`SIGHT_REPORT_BASE_URL` 指向你自己的 Sight Report 部署
+2. 浏览器窗口调到 1440×900 左右，缩放 100%，逐个场景走一遍
+3. 只截页面视口（不要带浏览器地址栏、书签栏、扩展提示条），导出宽度 ≥ 1600px
+4. 替换本目录同名文件即可，README 不用改
+
+拍摄时请检查画面里没有真实客户名称、内网 IP、真实账号与密钥。
