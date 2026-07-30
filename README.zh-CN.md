@@ -202,6 +202,29 @@ def build_signature(app_id, app_secret, account, user_name, report_id="", expire
 
 > **`appSecret` 只能待在服务端。** 一旦下发到浏览器，任何人都能伪造任意用户身份的报表访问。
 
+### 两种认证方式
+
+拿到签名后有两种用法，按调用场景选一种即可（`/api/embed/**` 不走平台登录态，只认下面两者之一）：
+
+| 方式 | 怎么带 | 适用 |
+| --- | --- | --- |
+| **A. 一次性签名**（无状态，本 demo 用的就是它） | 每次请求带查询参数 `_s` | 嵌入 URL、报表发现、服务端导出。服务端不保存状态，签名到期即失效 |
+| **B. 换取会话** | `POST /api/embed/auth` 用签名换 `sessionToken`，之后请求带 Header `X-Embed-Session` | 服务端要连续调多个接口时省去每次重算签名；嵌入页面内部用的就是这条 |
+
+```http
+POST /api/embed/auth
+{ "signature": "<_s 的值>", "reportId": "rpt_sales" }
+
+→ { "code": 0, "data": { "sessionToken": "...", "userId": "...", "userName": "张三",
+      "externalAccount": "ext__erp-system__u1001", "appId": "erp-system",
+      "reportId": "rpt_sales", "expireAt": 1735660800000 } }
+```
+
+- 会话有效期取「签名有效期」与「应用上限」（默认 60 / 最长 1440 分钟）的较小值；
+  `GET /api/embed/session/validate` 校验、`POST /api/embed/session/logout` 主动失效。
+- 会话模式下报表访问范围仍受限：签名绑定了 `reportId` 就只能访问该报表，未绑定则按应用白名单放行。
+- **嵌入报表时你不需要自己换会话**——把带 `_s` 的 URL 交给 iframe 即可，页面内部会自己完成。
+
 ### 场景一：嵌入查看报表
 
 ```

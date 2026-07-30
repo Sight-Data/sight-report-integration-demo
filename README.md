@@ -212,6 +212,33 @@ def build_signature(app_id, app_secret, account, user_name, report_id="", expire
 > **`appSecret` must stay on the server.** If it reaches the browser, anyone can forge report
 > access as any user.
 
+### Two ways to authenticate
+
+Once you have a signature there are two ways to present it — pick one per call site
+(`/api/embed/**` ignores the platform login session and accepts only these two):
+
+| Mode | How | Use for |
+| --- | --- | --- |
+| **A. One-shot signature** (stateless — what this demo uses) | `_s` query parameter on every request | embed URLs, discovery, server-side export. Nothing is stored server-side; it dies with the signature |
+| **B. Exchange for a session** | `POST /api/embed/auth` returns a `sessionToken`; send it as the `X-Embed-Session` header | server-side code making several calls in a row, so you sign once; this is what the embed page does internally |
+
+```http
+POST /api/embed/auth
+{ "signature": "<the _s value>", "reportId": "rpt_sales" }
+
+→ { "code": 0, "data": { "sessionToken": "...", "userId": "...", "userName": "Zhang San",
+      "externalAccount": "ext__erp-system__u1001", "appId": "erp-system",
+      "reportId": "rpt_sales", "expireAt": 1735660800000 } }
+```
+
+- Session lifetime is the smaller of the signature lifetime and the application maximum
+  (default 60, max 1440 minutes). Check it with `GET /api/embed/session/validate`,
+  end it early with `POST /api/embed/session/logout`.
+- Scope still applies in session mode: a signature bound to a `reportId` reaches only that report;
+  an unbound one is limited by the application's report allowlist.
+- **You do not need to exchange a session to embed a report** — hand the `_s` URL to the iframe
+  and the page does it for you.
+
 ### Scenario 1: embed a report
 
 ```
