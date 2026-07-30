@@ -64,15 +64,20 @@ npm install
 npm start
 ```
 
-Open <http://localhost:3010/demo/> and follow the four steps in the console:
+Open <http://localhost:3010/demo/>. The console is **organized by scenario**, mirroring the
+integration guide below:
 
-1. **Connect** — read config, verify the report server is reachable
-2. **User & report** — set `account` / `userName`, click *Load list* and pick a report
-3. **Parameters & display** — set query parameters and display flags, then *Open report* (`⌘/Ctrl + ↵`)
-4. **Advanced** — event subscription, host invoke, staged datasets, server-side export
+- A **shared context** bar on top: demo backend URL, `account` / `userName`, signature lifetime,
+  `reportId`, query parameters. Every scenario uses these values, and they all go into the signature.
+- A row of **scenario tabs**, one open at a time: embed → events → host invoke → discovery →
+  server-side export → staged datasets. Each one gives you a one-line goal, only the fields that
+  scenario needs, its main action, **copyable code rendered from your current form values**, and the result.
+- A persistent **report preview** and **inspector** on the right (event log / invoke results /
+  embed URL / discovery results / request log). Tabs rather than a sidebar, so the preview keeps
+  the width — it still works on a small laptop screen.
 
-The right-hand inspector shows the event log, the generated embed URL, discovery results and
-the full request log — that is where you debug an integration.
+First run: click *Read config* on top → pick a report in scenario 4 → open it in scenario 1
+(`⌘/Ctrl + ↵`). Scenarios are hash-routed (e.g. `#/events`), so you can share a link to one.
 
 Windows users can double-click `start-demo.cmd`; on macOS/Linux use `./start-demo.sh`.
 Docker also works: `cd backend-node && docker compose up --build`.

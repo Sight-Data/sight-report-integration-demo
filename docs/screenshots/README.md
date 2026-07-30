@@ -4,10 +4,11 @@ README 里引用的截图放在这个目录。建议文件名与用途：
 
 | 文件名 | 内容 | 建议尺寸 |
 | --- | --- | --- |
-| `console.png` | 集成控制台整屏（左侧四步 + 中间报表 + 右侧事件日志） | 宽 ≥ 1600px |
+| `console.png` | 整屏：共享条 + 场景 1（嵌入查看，代码片段展开）+ 报表预览 | 宽 ≥ 1600px |
 | `embedded-report.png` | 嵌入渲染的报表本体（分组小计、交叉表、图表等） | 宽 ≥ 1400px |
-| `events.png` | 事件日志面板，含 `report:loaded` 与自定义单元格事件 | 宽 ≥ 1000px |
-| `staged-dataset.png` | 外部数据集：上传 token 后的预览 | 宽 ≥ 1000px |
+| `events.png` | 场景 2：事件日志里的 `report:loaded` 与自定义单元格事件 | 宽 ≥ 1000px |
+| `discover.png` | 场景 4：报表发现列表（点选后写回共享 reportId） | 宽 ≥ 1000px |
+| `staged-dataset.png` | 场景 6：上传 token 后的带 `_dataIds` 预览 | 宽 ≥ 1000px |
 
 截图注意：
 
