@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sight Report 集成控制台 · Integration Console</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <!-- ── 顶栏 ───────────────────────────────────────── -->
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark">SR</span>
+          <div class="brand-text">
+            <h1>Sight Report 集成控制台</h1>
+            <p>后端签名 · 嵌入预览 · 事件回传 · 宿主调用 · 外部数据集 · 服务端导出</p>
+          </div>
+        </div>
+        <div class="status-strip">
+          <div class="pill" id="pillConnection" data-state="unknown">
+            <span class="dot"></span>
+            <span class="pill-label">连接</span>
+            <strong id="connectionText">未检测</strong>
+          </div>
+          <div class="pill">
+            <span class="pill-label">报表系统</span>
+            <strong id="reportBaseText">-</strong>
+          </div>
+          <div class="pill">
+            <span class="pill-label">appId</span>
+            <strong id="appIdText">-</strong>
+          </div>
+          <div class="pill">
+            <span class="pill-label">当前报表</span>
+            <strong id="reportIdText">-</strong>
+          </div>
+          <button id="helpSignatureBtn" class="ghost small" title="签名与接入总览">接入说明</button>
+        </div>
+      </header>
+
+      <div class="body-grid">
+        <!-- ── 左侧：配置流 ──────────────────────────────── -->
+        <aside class="sidebar" aria-label="集成配置">
+          <section class="step" data-step="1">
+            <header class="step-head">
+              <span class="step-index">1</span>
+              <div>
+                <h2>连接后端</h2>
+                <p>appSecret 只留在这个后端里，浏览器永远拿不到。</p>
+              </div>
+            </header>
+            <div class="step-body">
+              <label class="field">
+                <span>Demo 后端地址</span>
+                <input id="backendBaseUrl" type="text" value="http://localhost:3010" spellcheck="false" />
+              </label>
+              <div class="row-actions">
+                <button id="loadConfigBtn" class="primary small">读取配置并检测</button>
+                <button id="resetStateBtn" class="ghost small" title="清除本地保存的表单值">重置表单</button>
+              </div>
+              <div id="backendInfo" class="banner neutral">点击「读取配置并检测」获取 appId、报表系统地址与签名有效期上限。</div>
+            </div>
+          </section>
+
+          <section class="step" data-step="2">
+            <header class="step-head">
+              <span class="step-index">2</span>
+              <div>
+                <h2>用户与报表</h2>
+                <p>account / userName 是第三方系统的当前登录人，会被写入签名。</p>
+              </div>
+            </header>
+            <div class="step-body">
+              <div class="field-grid two">
+                <label class="field">
+                  <span>account</span>
+                  <input id="account" type="text" value="u1001" spellcheck="false" />
+                </label>
+                <label class="field">
+                  <span>userName</span>
+                  <input id="userName" type="text" value="张三" />
+                </label>
+              </div>
+              <div class="field-grid two">
+                <label class="field">
+                  <span>reportId</span>
+                  <input id="reportId" type="text" value="" placeholder="可从下方列表选择" spellcheck="false" />
+                </label>
+                <label class="field">
+                  <span>签名有效期（分钟）</span>
+                  <input id="expireMinutes" type="number" value="10" min="1" />
+                </label>
+              </div>
+
+              <div class="picker">
+                <div class="picker-head">
+                  <div class="seg" role="tablist" aria-label="报表发现方式">
+                    <button class="seg-btn active" data-discover="type-tree" role="tab">按目录树</button>
+                    <button class="seg-btn" data-discover="tag-list" role="tab">按标签</button>
+                  </div>
+                  <button id="discoverBtn" class="secondary small">加载列表</button>
+                </div>
+                <div class="picker-controls">
+                  <label class="field inline" id="fileTypeField">
+                    <span>fileType</span>
+                    <select id="fileType">
+                      <option value="grid">grid（网格报表）</option>
+                      <option value="document">document（文档报表）</option>
+                      <option value="datawall">datawall（大屏）</option>
+                      <option value="mobile">mobile（移动端）</option>
+                    </select>
+                  </label>
+                  <label class="field inline hidden" id="tagField">
+                    <span>tag</span>
+                    <input id="tag" type="text" value="monthly" spellcheck="false" />
+                  </label>
+                </div>
+                <input id="pickerFilter" class="picker-filter" type="search" placeholder="过滤报表名称 / ID" />
+                <div id="reportList" class="report-list">
+                  <div class="empty-hint">尚未加载。列表来自 <code>/api/embed/report/type-tree</code> 或 <code>tag-list</code>，受应用白名单限制。</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="step" data-step="3">
+            <header class="step-head">
+              <span class="step-index">3</span>
+              <div>
+                <h2>参数与显示</h2>
+                <p>parameters 会 JSON 序列化后进 URL；开关对应 embed.html 的显示参数。</p>
+              </div>
+            </header>
+            <div class="step-body">
+              <div class="param-editor">
+                <div class="param-head">
+                  <span>报表查询参数</span>
+                  <div class="param-actions">
+                    <button id="paramAddBtn" class="ghost small">+ 添加</button>
+                    <button id="paramJsonBtn" class="ghost small">JSON 视图</button>
+                  </div>
+                </div>
+                <div id="paramRows" class="param-rows"></div>
+                <textarea id="paramJson" class="param-json hidden" rows="5" spellcheck="false"></textarea>
+                <div id="paramError" class="banner danger hidden"></div>
+              </div>
+
+              <div class="field-grid two">
+                <label class="field">
+                  <span>viewMode</span>
+                  <select id="viewMode">
+                    <option value="pagination">pagination（分页）</option>
+                    <option value="all">all（全部数据）</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>导出文件名（可选）</span>
+                  <input id="exportFileName" type="text" placeholder="留空用报表名" />
+                </label>
+              </div>
+              <div class="chip-row">
+                <label class="chip"><input id="hideToolbar" type="checkbox" /><span>隐藏工具栏</span></label>
+                <label class="chip"><input id="showQueryForm" type="checkbox" checked /><span>显示查询栏</span></label>
+                <label class="chip"><input id="autoSubscribe" type="checkbox" checked /><span>打开后自动订阅事件</span></label>
+              </div>
+              <div class="row-actions">
+                <button id="openEmbedBtn" class="primary">打开报表 <kbd>⌘/Ctrl + ↵</kbd></button>
+              </div>
+            </div>
+          </section>
+
+          <section class="step" data-step="4">
+            <header class="step-head">
+              <span class="step-index">4</span>
+              <div>
+                <h2>高级能力</h2>
+                <p>事件订阅、宿主调用 SDK、外部数据集、服务端导出。</p>
+              </div>
+            </header>
+            <div class="step-body">
+              <div class="tabs" role="tablist" aria-label="高级能力">
+                <button class="tab active" data-adv="events" role="tab">事件</button>
+                <button class="tab" data-adv="invoke" role="tab">宿主调用</button>
+                <button class="tab" data-adv="staged" role="tab">外部数据集</button>
+                <button class="tab" data-adv="export" role="tab">服务端导出</button>
+              </div>
+
+              <!-- 事件 -->
+              <div class="tab-pane active" data-adv-pane="events">
+                <p class="pane-hint">
+                  <code>report:loaded</code> / <code>report:error</code> / 单元格事件零配置直达；
+                  <code>query</code> / <code>query-done</code> / <code>export</code> / <code>print</code> 需订阅。
+                </p>
+                <div class="chip-row wrap">
+                  <label class="chip"><input id="subQuery" type="checkbox" checked /><span>query</span></label>
+                  <label class="chip"><input id="subQueryDone" type="checkbox" checked /><span>query-done</span></label>
+                  <label class="chip"><input id="subExport" type="checkbox" checked /><span>export</span></label>
+                  <label class="chip"><input id="subPrint" type="checkbox" checked /><span>print</span></label>
+                </div>
+                <div class="row-actions">
+                  <button id="subscribeBtn" class="secondary small">订阅所选</button>
+                  <button id="subscribeAllBtn" class="secondary small">订阅全部 (*)</button>
+                  <button id="helpEventsBtn" class="ghost small">接入说明</button>
+                </div>
+              </div>
+
+              <!-- 宿主调用 -->
+              <div class="tab-pane" data-adv-pane="invoke">
+                <p class="pane-hint">
+                  基于零依赖 SDK <code>sight-report-embed.js</code>。先「打开报表」，结果进右侧「调用结果」。
+                </p>
+                <div class="field-grid two">
+                  <label class="field">
+                    <span>setParameters JSON</span>
+                    <input id="invokeParams" type="text" value='{"year":2025,"month":6}' spellcheck="false" />
+                  </label>
+                  <label class="field">
+                    <span>cellName</span>
+                    <input id="invokeCellName" type="text" value="A1" spellcheck="false" />
+                  </label>
+                </div>
+                <div class="btn-grid">
+                  <button id="invokeSetParamsBtn" class="secondary small">setParameters</button>
+                  <button id="invokeQueryBtn" class="secondary small">query</button>
+                  <button id="invokeResetBtn" class="secondary small">reset</button>
+                  <button id="invokeGetStateBtn" class="secondary small">getState</button>
+                  <button id="invokeGetCellBtn" class="secondary small">getCellValue</button>
+                  <button id="invokeGetCellsBtn" class="secondary small">getCellValues</button>
+                  <button id="invokePrintBtn" class="secondary small">print</button>
+                  <button id="invokeExportBtn" class="secondary small">export(excel)</button>
+                </div>
+              </div>
+
+              <!-- 外部数据集 -->
+              <div class="tab-pane" data-adv-pane="staged">
+                <p class="pane-hint">
+                  报表用「外部数据集」时，先上传数据拿 <code>token</code>，再把 <code>_dataIds</code> 带进 parameters。
+                </p>
+                <label class="field">
+                  <span>datasets JSON</span>
+                  <textarea id="stagedDatasets" rows="5" spellcheck="false">{"orders":[{"orderId":"ORD-001","product":"Widget A","quantity":10,"price":99.5},{"orderId":"ORD-002","product":"Widget B","quantity":5,"price":149}]}</textarea>
+                </label>
+                <div id="stagedStatus" class="banner neutral">未上传</div>
+                <div class="row-actions">
+                  <button id="stagedSetBtn" class="secondary small">上传数据</button>
+                  <button id="stagedEmbedBtn" class="secondary small" disabled>带 token 预览</button>
+                  <button id="stagedClearBtn" class="ghost small" disabled>清除</button>
+                  <button id="helpStagedBtn" class="ghost small">接入说明</button>
+                </div>
+              </div>
+
+              <!-- 服务端导出 -->
+              <div class="tab-pane" data-adv-pane="export">
+                <p class="pane-hint">
+                  走后端代理 <code>/api/embed/export/{format}</code>；签名里的 reportId 必须与 <code>fileId</code> 一致。
+                </p>
+                <div class="btn-grid four">
+                  <button class="secondary small" data-export="pdf">PDF</button>
+                  <button class="secondary small" data-export="excel">Excel</button>
+                  <button class="secondary small" data-export="word">Word</button>
+                  <button class="secondary small" data-export="csv">CSV</button>
+                </div>
+                <p class="pane-hint muted">导出使用当前 reportId、参数与有效期，文件由浏览器直接下载。</p>
+              </div>
+            </div>
+          </section>
+        </aside>
+
+        <!-- ── 中间：报表预览 ────────────────────────────── -->
+        <main class="viewer">
+          <header class="viewer-head">
+            <div class="viewer-title">
+              <h2>报表预览</h2>
+              <span id="viewerStatus" class="state-chip" data-state="idle">未打开</span>
+            </div>
+            <div class="viewer-actions">
+              <button id="reloadEmbedBtn" class="ghost small" disabled title="重新生成签名并重载">重新签名</button>
+              <a id="openNewWindowLink" class="link disabled" href="#" target="_blank" rel="noreferrer">新窗口打开</a>
+            </div>
+          </header>
+          <div class="viewer-stage">
+            <iframe id="reportFrame" title="Sight Report 嵌入预览"></iframe>
+            <div id="viewerEmpty" class="viewer-empty">
+              <div class="viewer-empty-inner">
+                <h3>还没有打开报表</h3>
+                <ol>
+                  <li>第 1 步读取后端配置，确认连接正常</li>
+                  <li>第 2 步选一个 reportId</li>
+                  <li>第 3 步点「打开报表」</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </main>
+
+        <!-- ── 右侧：观察窗 ──────────────────────────────── -->
+        <aside class="inspector" aria-label="观察窗">
+          <div class="inspector-head">
+            <div class="tabs" role="tablist" aria-label="观察窗">
+              <button class="tab active" data-insp="events" role="tab">事件日志</button>
+              <button class="tab" data-insp="invoke" role="tab">调用结果</button>
+              <button class="tab" data-insp="url" role="tab">embed URL</button>
+              <button class="tab" data-insp="discovery" role="tab">发现结果</button>
+              <button class="tab" data-insp="requests" role="tab">请求日志</button>
+            </div>
+            <div class="inspector-tools">
+              <button class="icon-btn" id="inspCopyBtn" title="复制当前面板">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+              </button>
+              <button class="icon-btn" id="inspClearBtn" title="清空当前面板">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+              </button>
+              <button class="icon-btn" id="inspExpandBtn" title="放大查看">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" /></svg>
+              </button>
+            </div>
+          </div>
+          <div class="inspector-body">
+            <pre class="pane active" data-insp-pane="events" id="paneEvents"></pre>
+            <pre class="pane" data-insp-pane="invoke" id="paneInvoke"></pre>
+            <pre class="pane" data-insp-pane="url" id="paneUrl"></pre>
+            <pre class="pane" data-insp-pane="discovery" id="paneDiscovery"></pre>
+            <pre class="pane" data-insp-pane="requests" id="paneRequests"></pre>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <div id="toastHost" class="toast-host" aria-live="polite"></div>
+
+    <!-- ── 弹窗：放大查看 ─────────────────────────────── -->
+    <div id="expandModal" class="modal-backdrop" hidden>
+      <div class="modal">
+        <div class="modal-head">
+          <h2 id="expandTitle">详情</h2>
+          <div class="modal-actions">
+            <button id="expandCopyBtn" class="ghost small">复制</button>
+            <button data-close-modal class="ghost small">关闭</button>
+          </div>
+        </div>
+        <div class="modal-body"><pre id="expandContent"></pre></div>
+      </div>
+    </div>
+
+    <!-- ── 弹窗：签名与接入总览 ───────────────────────── -->
+    <div id="signatureHelpModal" class="modal-backdrop" hidden>
+      <div class="modal">
+        <div class="modal-head">
+          <h2>接入总览与签名规则</h2>
+          <div class="modal-actions"><button data-close-modal class="ghost small">关闭</button></div>
+        </div>
+        <div class="modal-body doc">
+          <h3>四类场景</h3>
+          <ul>
+            <li><strong>嵌入查看</strong> — <code>embed.html?reportId={id}&amp;_s={signature}</code></li>
+            <li><strong>接收事件</strong> — 宿主 <code>window.addEventListener('message', ...)</code></li>
+            <li><strong>获取报表列表</strong> — <code>/api/embed/report/type-tree</code>、<code>/api/embed/report/tag-list</code></li>
+            <li><strong>服务端导出</strong> — <code>/api/embed/export/{pdf|excel|word|csv}</code></li>
+          </ul>
+
+          <h3>签名规则</h3>
+          <ul>
+            <li>签名内容：<code>appId | account | userName | reportId | expireAt</code>（竖线连接）</li>
+            <li>算法：<code>HMAC-SHA256(签名内容, appSecret)</code>，输出十六进制</li>
+            <li>参数体：上述字段 + <code>signature</code> 组成 JSON，再 Base64Url 编码（无填充），作为 <code>_s</code></li>
+            <li>expireAt 是 Unix 秒；查看类建议 5~15 分钟，每次打开实时生成，不要缓存 URL</li>
+          </ul>
+
+          <h3>reportId 绑定规则</h3>
+          <ul>
+            <li>查看报表：建议绑定具体 reportId</li>
+            <li>获取列表：通常留空，返回应用白名单范围内全部结果</li>
+            <li>服务端导出：必须与请求参数 <code>fileId</code> 完全一致，不可留空</li>
+          </ul>
+
+          <h3>务必注意</h3>
+          <ul>
+            <li><strong>appSecret 只在服务端使用</strong>，不可下发到浏览器或客户端</li>
+            <li>外部用户会映射为内部用户，格式 <code>ext__{appId}__{account}</code></li>
+            <li>配置「报表白名单」后，列表接口也会自动受限，第三方无需再过滤</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 弹窗：事件接入说明 ─────────────────────────── -->
+    <div id="eventsHelpModal" class="modal-backdrop" hidden>
+      <div class="modal">
+        <div class="modal-head">
+          <h2>报表事件 — 接入说明</h2>
+          <div class="modal-actions"><button data-close-modal class="ghost small">关闭</button></div>
+        </div>
+        <div class="modal-body doc">
+          <h3>事件分两级</h3>
+          <ul>
+            <li>
+              <strong>零配置直发</strong>：<code>report:loaded</code>（首次渲染完成，payload <code>{ elapsedMs }</code>）、
+              <code>report:error</code>（payload <code>{ phase, message }</code>）、
+              <strong>单元格事件</strong>（设计器「发送事件」链接配置）
+            </li>
+            <li>
+              <strong>订阅后才发</strong>：<code>report:query</code>、<code>report:query-done</code>、
+              <code>report:export</code>、<code>report:print</code>
+            </li>
+          </ul>
+
+          <h3>第一步：零配置监听</h3>
+          <pre class="code">window.addEventListener('message', (e) =&gt; {
+  if (e.origin !== 'https://报表系统地址') return   // 校验来源
+  if (e.data?.protocol !== 'sight-report') return   // 校验协议命名空间
+  const { name, payload, source } = e.data
+  // source = { reportId, cellName?, cid? }，cid 形如 "A2-3-1" 可区分展开后第几行
+})</pre>
+
+          <h3>第二步（可选）：订阅过程性事件</h3>
+          <pre class="code">iframe.contentWindow.postMessage({
+  protocol: 'sight-report',
+  type: 'subscribe',
+  events: ['report:query', 'report:export']   // 或 ['*']
+}, 'https://报表系统地址')</pre>
+          <p>订阅同时会让报表侧锁定本页面 origin 作为后续 postMessage 的 targetOrigin（安全收紧）。</p>
+
+          <h3>单元格事件怎么配</h3>
+          <ol>
+            <li>报表设计器 → 选中单元格 → 链接 → 添加链接 → <strong>发送事件</strong></li>
+            <li>事件名自定义（如 <code>order-selected</code>），不能以 <code>report:</code> 开头</li>
+            <li>参数作为 payload 传出，支持表达式（如 <code>A2</code> 取当前行单元格值）</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 弹窗：外部数据集说明 ───────────────────────── -->
+    <div id="stagedHelpModal" class="modal-backdrop" hidden>
+      <div class="modal">
+        <div class="modal-head">
+          <h2>外部数据集 — 接入说明</h2>
+          <div class="modal-actions"><button data-close-modal class="ghost small">关闭</button></div>
+        </div>
+        <div class="modal-body doc">
+          <h3>使用流程</h3>
+          <ol>
+            <li><strong>上传数据</strong> — 后端调 <code>POST /api/embed/staged-dataset/set</code>，返回 <code>token</code></li>
+            <li><strong>嵌入 / 导出</strong> — parameters 里加 <code>"_dataIds": "&lt;token&gt;"</code></li>
+            <li><strong>清除（可选）</strong> — <code>POST /api/embed/staged-dataset/clear</code></li>
+          </ol>
+
+          <h3>请求与响应</h3>
+          <pre class="code">POST /api/embed/staged-dataset/set
+{
+  "signature": "&lt;签名 token&gt;",
+  "reportId": "rpt_sales",
+  "datasets": { "orders": [ { "orderId": "ORD-001", "price": 99.5 } ] }
+}
+
+→ { "code": 0, "data": { "token": "a1b2c3d4", "datasetNames": ["orders"] } }</pre>
+
+          <h3>注意事项</h3>
+          <ul>
+            <li>签名方式与嵌入报表相同（HMAC-SHA256）</li>
+            <li>一次请求可传多个数据集，共享一个 token；每次 <code>/set</code> 生成新 token，不支持追加</li>
+            <li>数据默认保留 <strong>24 小时</strong>，payload 上限 <strong>5 MB</strong></li>
+            <li>报表设计时需先创建「外部数据集」并定义字段结构</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <script src="./sight-report-embed.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

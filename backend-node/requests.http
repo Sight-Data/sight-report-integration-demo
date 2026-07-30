@@ -1,0 +1,95 @@
+@backendBaseUrl = http://localhost:3010
+@account = u1001
+@userName = 张三
+@reportId = rpt_sales
+@fileType = grid
+@tag = monthly
+@expireMinutes = 10
+@parameters = {"year":2024,"month":1}
+
+### Health
+GET {{backendBaseUrl}}/health
+
+### Demo Config
+GET {{backendBaseUrl}}/api/demo/config
+
+### Embed URL
+POST {{backendBaseUrl}}/api/demo/embed-url
+Content-Type: application/json
+
+{
+  "account": "{{account}}",
+  "userName": "{{userName}}",
+  "reportId": "{{reportId}}",
+  "parameters": {
+    "year": 2024,
+    "month": 1
+  },
+  "hideToolbar": false,
+  "showQueryForm": true,
+  "viewMode": "all",
+  "expireMinutes": {{expireMinutes}}
+}
+
+### Type Tree
+GET {{backendBaseUrl}}/api/demo/report/type-tree?account={{account}}&userName={{userName}}&fileType={{fileType}}&expireMinutes={{expireMinutes}}
+
+### Tag List
+GET {{backendBaseUrl}}/api/demo/report/tag-list?account={{account}}&userName={{userName}}&tag={{tag}}&expireMinutes={{expireMinutes}}
+
+### Export PDF
+GET {{backendBaseUrl}}/api/demo/export/pdf?account={{account}}&userName={{userName}}&reportId={{reportId}}&expireMinutes={{expireMinutes}}&parameters={{parameters}}
+
+### Export Excel
+GET {{backendBaseUrl}}/api/demo/export/excel?account={{account}}&userName={{userName}}&reportId={{reportId}}&expireMinutes={{expireMinutes}}&parameters={{parameters}}
+
+### ── Staged Dataset ──────────────────────────────
+
+### Upload Staged Dataset
+POST {{backendBaseUrl}}/api/demo/staged-dataset/set
+Content-Type: application/json
+
+{
+  "account": "{{account}}",
+  "userName": "{{userName}}",
+  "reportId": "{{reportId}}",
+  "expireMinutes": {{expireMinutes}},
+  "datasets": {
+    "orders": [
+      {"orderId": "ORD-001", "product": "Widget A", "quantity": 10, "price": 99.5, "orderDate": "2024-03-15"},
+      {"orderId": "ORD-002", "product": "Widget B", "quantity": 5,  "price": 149.0, "orderDate": "2024-03-16"},
+      {"orderId": "ORD-003", "product": "Widget C", "quantity": 20, "price": 29.9, "orderDate": "2024-03-17"}
+    ],
+    "categories": [
+      {"id": "CAT-1", "name": "Electronics"},
+      {"id": "CAT-2", "name": "Accessories"}
+    ]
+  }
+}
+
+### Clear Staged Dataset (replace TOKEN with the value from the set response)
+POST {{backendBaseUrl}}/api/demo/staged-dataset/clear
+Content-Type: application/json
+
+{
+  "account": "{{account}}",
+  "userName": "{{userName}}",
+  "expireMinutes": {{expireMinutes}},
+  "token": "TOKEN"
+}
+
+### Embed with Staged Dataset (replace TOKEN with the value from the set response)
+POST {{backendBaseUrl}}/api/demo/staged-dataset/embed-url
+Content-Type: application/json
+
+{
+  "account": "{{account}}",
+  "userName": "{{userName}}",
+  "reportId": "{{reportId}}",
+  "token": "TOKEN",
+  "parameters": {"year": 2024},
+  "hideToolbar": false,
+  "showQueryForm": false,
+  "viewMode": "all",
+  "expireMinutes": {{expireMinutes}}
+}
