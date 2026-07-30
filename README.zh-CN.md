@@ -244,6 +244,7 @@ document.getElementById('reportFrame').src = embedUrl
 | 订阅后发 | `report:query-done` | `{ parameters, elapsedMs }`，每次查询渲染完成（含首次） |
 | 订阅后发 | `report:export` | `{ format }` |
 | 订阅后发 | `report:print` | `{ command }` |
+| 订阅后发 | `report:resize` | 报表尺寸变化（宿主按需调整 iframe 高度） |
 
 **第一步：零配置监听**
 
@@ -338,7 +339,7 @@ GET {baseUrl}/api/embed/report/tag-list?_s={signature}&tag=monthly
 服务端拿文件流，用于下载、归档、邮件、定时任务：
 
 ```
-GET {baseUrl}/api/embed/export/{pdf|excel|word|csv}?fileId={reportId}&_s={signature}
+GET {baseUrl}/api/embed/export/{pdf|excel|word|csv|ofd}?fileId={reportId}&_s={signature}
 ```
 
 | 查询参数 | 说明 |
@@ -347,8 +348,15 @@ GET {baseUrl}/api/embed/export/{pdf|excel|word|csv}?fileId={reportId}&_s={signat
 | `parameters` | 报表查询参数（JSON 文本） |
 | `fileName` | 可选，导出文件名 |
 | `pageIndex` | 可选，导出指定页 |
+| `sheetId` | 可选，多页签报表指定页签 |
 
 有效期建议 5~15 分钟。签名 `reportId` 留空会被服务端拒绝。
+
+数据量大的 Excel 走异步任务：`POST /api/embed/export/excel` 建任务 →
+`GET /api/embed/export/excel/task/{taskId}` 查进度 →
+`GET /api/embed/export/excel/download/{taskId}` 下载。
+
+> `/api/embed/**` 有速率限制：同一 IP 每分钟最多 120 次请求，超出返回 429。批量导出时注意节流。
 
 ### 场景六：外部数据集
 

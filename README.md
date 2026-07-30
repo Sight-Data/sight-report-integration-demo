@@ -254,6 +254,7 @@ Two tiers of events:
 | Subscribed | `report:query-done` | `{ parameters, elapsedMs }` — every render, including the first |
 | Subscribed | `report:export` | `{ format }` |
 | Subscribed | `report:print` | `{ command }` |
+| Subscribed | `report:resize` | report size changed (resize the iframe if you need to) |
 
 **Step 1 — listen (no configuration needed)**
 
@@ -349,7 +350,7 @@ GET {baseUrl}/api/embed/report/tag-list?_s={signature}&tag=monthly
 Fetch the file bytes on your server — for downloads, archiving, email, scheduled jobs:
 
 ```
-GET {baseUrl}/api/embed/export/{pdf|excel|word|csv}?fileId={reportId}&_s={signature}
+GET {baseUrl}/api/embed/export/{pdf|excel|word|csv|ofd}?fileId={reportId}&_s={signature}
 ```
 
 | Query parameter | Meaning |
@@ -358,8 +359,15 @@ GET {baseUrl}/api/embed/export/{pdf|excel|word|csv}?fileId={reportId}&_s={signat
 | `parameters` | report query parameters (JSON text) |
 | `fileName` | optional output file name |
 | `pageIndex` | optional, export a single page |
+| `sheetId` | optional, pick a sheet in multi-sheet reports |
 
 Use a 5–15 minute lifetime. An empty `reportId` in the signature is rejected by the server.
+
+Large Excel exports run as an async task: `POST /api/embed/export/excel` to create it →
+`GET /api/embed/export/excel/task/{taskId}` to poll →
+`GET /api/embed/export/excel/download/{taskId}` to download.
+
+> `/api/embed/**` is rate limited: 120 requests per minute per IP, then 429. Throttle bulk exports.
 
 ### Scenario 6: staged (external) datasets
 
