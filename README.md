@@ -279,7 +279,7 @@ Two tiers of events:
 | Zero-config | custom cell events | link parameters from the designer, evaluated per clicked row |
 | Subscribed | `report:query` | `{ parameters }` |
 | Subscribed | `report:query-done` | `{ parameters, elapsedMs }` — every render, including the first |
-| Subscribed | `report:export` | `{ format }` |
+| Subscribed | `report:export` | `{ format }` — fired when the export **starts**; there is no completion event |
 | Subscribed | `report:print` | `{ command }` |
 | Subscribed | `report:resize` | report size changed (resize the iframe if you need to) |
 
@@ -355,7 +355,7 @@ await report.setParameters({ year: 2025 })    // merge parameters and re-query (
 const state = await report.getState()         // check state.fileType first, then pick your methods
 const p = await report.getParameters(['year']) // read parameters in effect (omit names for all)
 const cell = await report.getCellValue('C4')  // rendered cell text (grid only)
-await report.export('excel')                  // resolves on accept; watch report:export for done
+await report.export('excel')                  // resolves on accept — there is no completion event to wait for
 await report.reload()                          // fetch a fresh signed URL and reload
 ```
 
