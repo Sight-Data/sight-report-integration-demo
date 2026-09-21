@@ -315,9 +315,25 @@ frame.contentWindow.postMessage(
 
 Subscribing also locks the host origin as the report's `targetOrigin` for later messages.
 
-**Configuring cell events**: report designer → select a cell → Link → Add link → **Send event**.
-Event names are yours to choose but must not start with `report:` (reserved). Parameters support
-expressions such as `A2` to read the current row's cell value.
+**Configuring custom events**: every report type has its own entry point. Event names are yours to
+choose but must not start with `report:` (reserved); parameters become the payload and are evaluated
+against the clicked row / copy.
+
+| Report type | Where to configure | Payload |
+| --- | --- | --- |
+| grid | select a cell → Link → Add link → **Send event** | link parameters (expressions such as `A2` read the current row) |
+| document | select a canvas component → Position & actions → Click link → **Send event** | same; a document's table component is an embedded grid, so configure its cells the grid way |
+| dashboard | select a block → Point click / Row click / Per-column → **Send event to host**, then fill in the event name | the normalized data point `{ field, value, label, seriesName? }`, plus the whole `row` for tables |
+
+Besides `payload`, the envelope carries `source` (locators: `cellName`/`cid` for grid, `componentId`
+for document, `blockId`/`tabId` for dashboard) and `context.parameters` — the filter values in effect
+when the event fired. `context` deliberately sits on the envelope rather than inside `payload`:
+payload keys are chosen by the report author, so merging the two would eventually collide.
+
+**Two dashboard specifics**: `report:loaded` fires when the first screen's blocks have finished
+loading (not when the template arrives), and carries `blockCount` / `failedCount`;
+`report:query` / `query-done` carry `trigger: 'user' | 'auto'`, so scheduled refreshes are
+distinguishable from user actions.
 
 ### Scenario 3: call report methods from the host (SDK)
 
@@ -336,8 +352,9 @@ const report = SightReportEmbed.mount('#reportBox', {
 await report.ready()                          // loaded event, with a getState poll as fallback
 report.on('report:query-done', (e) => console.log(e.payload.elapsedMs))
 await report.setParameters({ year: 2025 })    // merge parameters and re-query (awaits completion)
-const state = await report.getState()         // parameters / variables / paging / loading
-const cell = await report.getCellValue('C4')  // rendered cell text (grid reports)
+const state = await report.getState()         // check state.fileType first, then pick your methods
+const p = await report.getParameters(['year']) // read parameters in effect (omit names for all)
+const cell = await report.getCellValue('C4')  // rendered cell text (grid only)
 await report.export('excel')                  // resolves on accept; watch report:export for done
 await report.reload()                          // fetch a fresh signed URL and reload
 ```
@@ -349,11 +366,16 @@ With an existing iframe element use `SightReportEmbed.connect(iframeEl)`.
 | `setParameters(params, { query })` | merges parameters; re-queries unless `query === false` |
 | `query()` / `reset()` | re-run query / reset parameters |
 | `export(format)` / `print(command)` | resolve on accept; completion arrives as an event |
-| `getState()` | parameters, variables, current/total pages, loading flag, active sheet |
-| `setSheet(sheetId)` | switch sheet (tab) in multi-sheet reports |
-| `getCellValue(name)` / `getCellValues(name)` | rendered cell text (first / all matches) |
+| `getParameters(names?, { raw })` | read parameters. Omit `names` for all; keys that don't exist are absent from the result. `raw` only differs on dashboards (the default is the **effective** value, including expanded date ranges and cross-filters) |
+| `getState()` | check `fileType` first: grid / document return parameters, variables, paging and sheet; dashboard returns the active tab, cross-filter and last-updated time |
+| `setSheet(sheetId)` | switch sheet (tab) — **grid only** |
+| `getCellValue(name)` / `getCellValues(name)` | rendered cell text (first / all matches) — **grid only** |
+| `setTab(tabId)` / `getTabs()` | switch dashboard tab — **dashboard only** |
 | `invoke(method, ...args)` | generic call, so protocol additions need no SDK upgrade |
 
+**Not every method exists on every report type.** Unsupported ones reject explicitly with `ok:false`
+and an `error` starting with `unsupported:` — they never silently succeed. Check
+`getState().fileType` first and pick accordingly.
 Write methods return `not-ready` before the first render completes; the SDK subscribes to process
 events for you. If your host is a Vue app that can import the report component, the component
 channel (`<ReportView ref="reportRef" :file-id="reportId" @report-event="onReportEvent" />`)

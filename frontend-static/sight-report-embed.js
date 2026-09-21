@@ -234,7 +234,22 @@
   }
 
   // invoke 白名单语法糖
-  var METHODS = ['setParameters', 'query', 'reset', 'export', 'print', 'getState', 'setSheet', 'getCellValue', 'getCellValues']
+  // 并非每种报表都支持全部方法：不支持的会明确回 ok:false / error 以 'unsupported:' 开头，
+  // 不会静默成功。用 getState().fileType 判断当前是 grid / document / dashboard。
+  var METHODS = [
+    'setParameters',
+    'getParameters',
+    'query',
+    'reset',
+    'export',
+    'print',
+    'getState',
+    'setSheet',
+    'getCellValue',
+    'getCellValues',
+    'setTab',
+    'getTabs',
+  ]
   METHODS.forEach(function (method) {
     SightReportInstance.prototype[method] = function () {
       var args = Array.prototype.slice.call(arguments)

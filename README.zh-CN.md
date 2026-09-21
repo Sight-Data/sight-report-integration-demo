@@ -301,9 +301,22 @@ frame.contentWindow.postMessage(
 
 订阅同时会让报表侧锁定宿主 origin 作为后续 `postMessage` 的 `targetOrigin`，安全性更高。
 
-**单元格事件怎么配**：报表设计器 → 选中单元格 → 链接 → 添加链接 → **发送事件**；
-事件名自定义（不能以 `report:` 开头，该前缀保留给系统事件），参数支持表达式
-（如 `A2` 取当前行单元格值）。
+**自定义事件怎么配**：三种报表各有入口，事件名都自定义（不能以 `report:` 开头，该前缀保留给系统事件），
+参数即 payload，按被点的那一行 / 那一份求值。
+
+| 报表类型 | 配置入口 | 载荷 |
+| --- | --- | --- |
+| 网格 grid | 选中单元格 → 链接 → 添加链接 → **发送事件** | 链接参数（支持表达式，如 `A2` 取当前行） |
+| 单据 document | 选中画布组件 → 定位与操作 → 点击链接 → **发送事件** | 同上；单据里的表格组件是一张内嵌网格，按网格那条路配 |
+| 仪表盘 dashboard | 选中区块 → 点击数据点 / 点整行 / 按列配置 → **发送事件到宿主页面**，并填事件名 | 归一后的数据点 `{ field, value, label, seriesName? }`，表格再带整行 `row` |
+
+事件信封除 `payload` 外还有两处：`source` 是定位字段（网格给 `cellName`/`cid`，单据给 `componentId`，
+仪表盘给 `blockId`/`tabId`），`context.parameters` 是事件发生时**生效**的查询条件。
+`context` 刻意放在信封而不是塞进 `payload`——payload 的键名由报表设计者自定，混在一起会撞名。
+
+**仪表盘的两处不同**：`report:loaded` 在**首屏区块取数完成**时才发（不是模板到手就发，payload 多带
+`blockCount` / `failedCount`）；`report:query` / `query-done` 的 payload 带 `trigger: 'user' | 'auto'`，
+定时刷新那一路也会发。
 
 ### 场景三：宿主调用报表方法（SDK）
 
@@ -321,8 +334,9 @@ const report = SightReportEmbed.mount('#reportBox', {
 await report.ready()                          // loaded 事件 + getState 轮询兜底
 report.on('report:query-done', (e) => console.log(e.payload.elapsedMs))
 await report.setParameters({ year: 2025 })    // 合并参数并重新出数（等完成）
-const state = await report.getState()         // 参数 / 变量 / 页码 / 加载状态
-const cell = await report.getCellValue('C4')  // 单元格渲染后显示值（grid 报表）
+const state = await report.getState()         // 先看 state.fileType，再决定用哪些方法
+const p = await report.getParameters(['year']) // 读当前生效参数（不传 names ＝全给）
+const cell = await report.getCellValue('C4')  // 单元格渲染后显示值（仅 grid）
 await report.export('excel')                  // 受理即回，完成看 report:export 事件
 await report.reload()                         // 重新取签名 URL 并重载
 ```
@@ -334,11 +348,15 @@ await report.reload()                         // 重新取签名 URL 并重载
 | `setParameters(params, { query })` | 合并参数；`query !== false` 时立即出数并等完成 |
 | `query()` / `reset()` | 重新查询 / 重置参数 |
 | `export(format)` / `print(command)` | 受理即回，完成看对应事件 |
-| `getState()` | 参数、变量、当前页 / 总页数、加载状态、当前 sheet |
-| `setSheet(sheetId)` | 多 sheet（页签）报表切换 |
-| `getCellValue(name)` / `getCellValues(name)` | 单元格渲染后显示值（首个 / 全部） |
+| `getParameters(names?, { raw })` | 读参数。`names` 省略＝全给，挑不到的键不出现在结果里；`raw` 只对仪表盘有区别（缺省是含日期展开与联动叠加的**生效值**） |
+| `getState()` | 先看 `fileType`：grid / document 回参数、变量、页码、sheet；dashboard 回页签、联动、数据更新时间 |
+| `setSheet(sheetId)` | 多 sheet（页签）报表切换 —— **仅 grid** |
+| `getCellValue(name)` / `getCellValues(name)` | 单元格渲染后显示值（首个 / 全部）—— **仅 grid** |
+| `setTab(tabId)` / `getTabs()` | 仪表盘页签切换 —— **仅 dashboard** |
 | `invoke(method, ...args)` | 泛化调用，协议加方法时旧 SDK 不用升级 |
 
+**方法不是每种报表都有**。不支持的会明确回 `ok:false`、`error` 以 `unsupported:` 开头，
+**不会静默成功**——先 `getState().fileType` 判类型，再决定调什么。
 写类方法在报表首次加载完成前返回 `not-ready`；过程性事件由 SDK 自动订阅。
 如果宿主是 Vue 应用且能引入报表组件，也可以用组件方式
 `<ReportView ref="reportRef" :file-id="reportId" @report-event="onReportEvent" />`——
