@@ -40,7 +40,11 @@ const config = {
   appId: readRequired('APP_ID'),
   appSecret: readRequired('APP_SECRET'),
   defaultExpireMinutes: readPositiveInt('DEMO_DEFAULT_EXPIRE_MINUTES', 10),
-  maxExpireMinutes: readPositiveInt('DEMO_MAX_EXPIRE_MINUTES', 60)
+  maxExpireMinutes: readPositiveInt('DEMO_MAX_EXPIRE_MINUTES', 60),
+  // 调用报表系统的超时（毫秒）/ Timeout for every request to Sight Report, in ms
+  upstreamTimeoutMs: readPositiveInt('DEMO_UPSTREAM_TIMEOUT_MS', 15000),
+  // JSON 请求体上限，暂存数据集上传会用到 / Max JSON body size (staged dataset uploads)
+  jsonBodyLimit: process.env.DEMO_JSON_BODY_LIMIT || '10mb'
 }
 
 if (config.defaultExpireMinutes > config.maxExpireMinutes) {

@@ -1,4 +1,24 @@
 const { buildSignatureToken } = require('./signature-service')
+const { DEFAULT_TIMEOUT_MS, fetchUpstream, readUpstreamJson, upstreamError } = require('./upstream')
+
+/** 上游约定 `{ code: 0, data }` 为成功；其余视为上游拒绝（签名无效、数据不合法等），返回 502 并透出上游消息 */
+async function postEmbedApi(url, payload, timeoutMs, fallbackMessage) {
+  const response = await fetchUpstream(
+    url,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    },
+    timeoutMs
+  )
+
+  const body = await readUpstreamJson(response)
+  if (!body || body.code !== 0) {
+    throw upstreamError(body?.msg || body?.message || `${fallbackMessage} (HTTP ${response.status})`)
+  }
+  return body.data
+}
 
 /**
  * Upload staged datasets to Sight Report.
@@ -12,6 +32,7 @@ const { buildSignatureToken } = require('./signature-service')
  * @param {string} [options.reportId]   Optional report ID
  * @param {number} options.expireAt     Signature expiration (Unix seconds)
  * @param {object} options.datasets     Map of datasetName → array of row objects
+ * @param {number} [options.timeoutMs]  Upstream request timeout in ms
  * @returns {Promise<{token: string, datasetNames: string[]}>}
  */
 async function setStagedDatasets({
@@ -22,7 +43,8 @@ async function setStagedDatasets({
   userName,
   reportId = '',
   expireAt,
-  datasets
+  datasets,
+  timeoutMs = DEFAULT_TIMEOUT_MS
 }) {
   const signatureToken = buildSignatureToken({
     appId,
@@ -33,23 +55,12 @@ async function setStagedDatasets({
     expireAt
   })
 
-  const url = `${baseUrl}/api/embed/staged-dataset/set`
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      signature: signatureToken,
-      reportId,
-      datasets
-    })
-  })
-
-  const body = await response.json()
-  if (body.code !== 0) {
-    throw new Error(body.msg || body.message || 'Failed to set staged datasets')
-  }
-
-  return body.data
+  return postEmbedApi(
+    `${baseUrl}/api/embed/staged-dataset/set`,
+    { signature: signatureToken, reportId, datasets },
+    timeoutMs,
+    'Failed to set staged datasets'
+  )
 }
 
 /**
@@ -63,6 +74,7 @@ async function setStagedDatasets({
  * @param {string} options.userName
  * @param {number} options.expireAt
  * @param {string} options.token       Token returned by setStagedDatasets
+ * @param {number} [options.timeoutMs] Upstream request timeout in ms
  * @returns {Promise<void>}
  */
 async function clearStagedDatasets({
@@ -72,7 +84,8 @@ async function clearStagedDatasets({
   account,
   userName,
   expireAt,
-  token
+  token,
+  timeoutMs = DEFAULT_TIMEOUT_MS
 }) {
   const signatureToken = buildSignatureToken({
     appId,
@@ -83,20 +96,12 @@ async function clearStagedDatasets({
     expireAt
   })
 
-  const url = `${baseUrl}/api/embed/staged-dataset/clear`
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      signature: signatureToken,
-      token
-    })
-  })
-
-  const body = await response.json()
-  if (body.code !== 0) {
-    throw new Error(body.msg || body.message || 'Failed to clear staged datasets')
-  }
+  await postEmbedApi(
+    `${baseUrl}/api/embed/staged-dataset/clear`,
+    { signature: signatureToken, token },
+    timeoutMs,
+    'Failed to clear staged datasets'
+  )
 }
 
 module.exports = {
