@@ -356,6 +356,7 @@ const state = await report.getState()         // check state.fileType first, the
 const p = await report.getParameters(['year']) // read parameters in effect (omit names for all)
 const cell = await report.getCellValue('C4')  // rendered cell text (grid only)
 await report.export('excel')                  // resolves on accept — there is no completion event to wait for
+const file = await report.getExportFile('pdf') // file content, no download: { blob, fileName, size }
 await report.reload()                          // fetch a fresh signed URL and reload
 ```
 
@@ -366,6 +367,7 @@ With an existing iframe element use `SightReportEmbed.connect(iframeEl)`.
 | `setParameters(params, { query })` | merges parameters; re-queries unless `query === false` |
 | `query()` / `reset()` | re-run query / reset parameters |
 | `export(format)` / `print(command)` | resolve on accept; completion arrives as an event |
+| `getExportFile(format, { maxBytes, timeoutMs })` | resolves with `{ blob, fileName, contentType, size, format }` once the file is in hand — the same file the toolbar export produces. See "Getting the file content" below |
 | `getParameters(names?, { raw })` | read parameters. Omit `names` for all; keys that don't exist are absent from the result. `raw` only differs on dashboards (the default is the **effective** value, including expanded date ranges and cross-filters) |
 | `getState()` | check `fileType` first: grid / document return parameters, variables, paging and sheet; dashboard returns the active tab, cross-filter and last-updated time |
 | `setSheet(sheetId)` | switch sheet (tab) — **grid only** |
@@ -380,6 +382,43 @@ Write methods return `not-ready` before the first render completes; the SDK subs
 events for you. If your host is a Vue app that can import the report component, the component
 channel (`<ReportView ref="reportRef" :file-id="reportId" @report-event="onReportEvent" />`)
 needs no subscription and exposes methods through `ref`.
+
+#### Getting the file content (remote printing / archiving / upload)
+
+When the report is already shown in the iframe and the host also needs the file itself, use
+`getExportFile`. **Your backend does not need to sign again or proxy the file**: the report page
+requests the export with its own embed session and hands the Blob back over `postMessage`.
+
+```js
+const file = await report.getExportFile('pdf', { maxBytes: 50 * 1024 * 1024 })
+// file = { blob, fileName: 'sales.pdf', contentType: 'application/pdf', size: 482113, format: 'pdf' }
+await fetch('/my-backend/remote-print', { method: 'POST', body: file.blob })
+```
+
+- **Same file as the toolbar export**: the format argument is the export menu's command name —
+  `pdf` (all), `pdfCurrent` (current page), `pdfCurrentSheet` (current sheet only on multi-sheet
+  reports), and likewise for `word` / `excel` / `csv` / `ofd`. Parameters come from the last
+  submitted query, so unsubmitted form edits don't leak in.
+- **Not available on dashboards or data walls** (`unsupported:`; a dashboard's `export('pdf')` is a
+  client-side page capture with no server file). Large-query detail Excel runs as an async task and
+  is `unsupported:` here too — use `export('excel')`.
+
+**Large files**:
+
+| Concern | Handling |
+| --- | --- |
+| Transfer | The report side uses `response.blob()`; posting a Blob passes a reference and **copies no bytes**. Browsers may keep large Blobs on disk |
+| Memory cap | `maxBytes` defaults to **100 MB**, `0` for no limit. `Content-Length` is checked first and the download is **aborted** if over the cap, without reading it into memory; chunked responses with no length are checked after reading |
+| Timeout | `timeoutMs` defaults to **120 s** (ordinary invokes use 30 s). On expiry the report side aborts the request and rejects with `timeout:` |
+| Concurrency | One `getExportFile` at a time per report; a second call rejects with `busy:` — parallel large exports double memory on both sides |
+| Server | PDF / Word are generated **synchronously**, so a huge report can be slow to the first byte; leave enough gateway timeout, or narrow the parameters / fetch page by page (`pdfCurrent`) |
+| Forwarding | Pass the Blob straight as a `fetch` `body`; don't convert to base64 — that adds a third in size and loads the whole thing into memory |
+
+Every failure rejects with an `error.message` prefix you can branch on: `too-large:` / `timeout:` /
+`busy:` / `unsupported:` / `session-expired:` (session expired and automatic renewal failed —
+`reload()` and retry) / `export-failed:` / `invalid format:` / `not-ready`.
+
+> Requires a Sight Report version that includes `getExportFile` (older versions reply `unknown method: getExportFile`).
 
 ### Scenario 4: discover reports
 

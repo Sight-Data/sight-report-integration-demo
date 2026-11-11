@@ -597,6 +597,10 @@
       'const cell  = await report.getCellValue(' + JSON.stringify(el.invokeCellName.value.trim() || 'A1') + ')',
       "await report.export('excel')               // 受理即回，完成看 report:export",
       '',
+      '// 拿文件内容（不下载）：发远程打印 / 归档。与工具栏导出同一份文件',
+      "const file = await report.getExportFile('pdf', { maxBytes: 50 * 1024 * 1024 })",
+      "await fetch('/my-backend/remote-print', { method: 'POST', body: file.blob })",
+      '',
       '// 其他：query / reset / print / setSheet / getCellValues / invoke(method, ...args)'
     ].join('\n')
 
@@ -1187,6 +1191,17 @@
   )
   $('invokePrintBtn').addEventListener('click', () => runInvoke('print', (i) => i.print()))
   $('invokeExportBtn').addEventListener('click', () => runInvoke('export', (i) => i.export('excel')))
+  $('invokeExportFileBtn').addEventListener('click', () =>
+    runInvoke('getExportFile', (i) =>
+      i.getExportFile('pdf').then((file) => {
+        // 演示：新窗口预览拿到的 PDF。真实项目里把 file.blob 发给自己的远程打印服务
+        const url = URL.createObjectURL(file.blob)
+        window.open(url, '_blank')
+        setTimeout(() => URL.revokeObjectURL(url), 60000)
+        return { fileName: file.fileName, contentType: file.contentType, size: file.size, format: file.format }
+      })
+    )
+  )
 
   el.discoverBtn.addEventListener('click', guard(discoverReports))
   el.pickerFilter.addEventListener('input', renderReportList)

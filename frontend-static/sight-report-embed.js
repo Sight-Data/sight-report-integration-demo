@@ -13,6 +13,7 @@
  *   report.on('patient-selected', (e) => console.log(e.payload))
  *   await report.setParameters({ year: 2025 })
  *   const state = await report.getState()
+ *   const file = await report.getExportFile('pdf')   // { blob, fileName, size }：发远程打印 / 归档
  */
 ;(function (global, factory) {
   if (typeof module === 'object' && typeof module.exports === 'object') {
@@ -25,6 +26,10 @@
 
   var PROTOCOL = 'sight-report'
   var DEFAULT_TIMEOUT = 30000
+  /** getExportFile 默认超时：服务端同步生成大文件可能要几十秒，比普通 invoke 长得多 */
+  var EXPORT_FILE_TIMEOUT = 120000
+  /** 报表侧到点会回明确的 timeout: 错误；SDK 多等这么久好收到它，而不是自己先报个笼统的超时 */
+  var EXPORT_FILE_TIMEOUT_GRACE = 5000
   /** 需订阅才推送的过程性事件（on 这些事件时 SDK 自动发 subscribe） */
   var SUBSCRIPTION_EVENTS = ['report:query', 'report:query-done', 'report:export', 'report:print', 'report:resize']
 
@@ -214,14 +219,17 @@
 
   /** 泛化方法调用：协议新增方法时旧 SDK 无需升级 */
   SightReportInstance.prototype.invoke = function (method) {
+    return this._invoke(method, Array.prototype.slice.call(arguments, 1), this._timeoutMs)
+  }
+
+  SightReportInstance.prototype._invoke = function (method, args, timeoutMs) {
     var self = this
-    var args = Array.prototype.slice.call(arguments, 1)
     return new Promise(function (resolve, reject) {
       var id = nextId()
       var timer = setTimeout(function () {
         delete self._pending[id]
         reject(new Error('invoke 超时: ' + method))
-      }, self._timeoutMs)
+      }, timeoutMs)
       self._pending[id] = { resolve: resolve, reject: reject, timer: timer }
       try {
         self._post({ protocol: PROTOCOL, type: 'invoke', id: id, method: method, args: args })
@@ -256,6 +264,25 @@
       return this.invoke.apply(this, [method].concat(args))
     }
   })
+
+  /**
+   * 取导出文件内容（不下载），拿去发远程打印、归档、上传。
+   * 与报表工具栏导出是同一份文件：同一套命令名（pdf / pdfCurrent / pdfCurrentSheet / word / excel …）、
+   * 同一份已提交的查询参数与 sheet 范围。
+   *
+   * resolve 为 { blob, fileName, contentType, size, format }。Blob 经 postMessage 传过来只传引用、不复制字节。
+   *
+   * options.maxBytes  上限字节数，默认 100 MB，0 不限；超了 reject 'too-large: ...'，报表侧不会把整份读进内存
+   * options.timeoutMs 默认 120000；到点报表侧中断请求并 reject 'timeout: ...'
+   *
+   * 其他失败前缀：busy:（同一时刻只允许一个）/ unsupported: / session-expired: / export-failed: / not-ready
+   */
+  SightReportInstance.prototype.getExportFile = function (format, options) {
+    options = options || {}
+    var timeoutMs = options.timeoutMs > 0 ? options.timeoutMs : EXPORT_FILE_TIMEOUT
+    var args = [format || 'pdf', { maxBytes: options.maxBytes, timeoutMs: timeoutMs }]
+    return this._invoke('getExportFile', args, timeoutMs + EXPORT_FILE_TIMEOUT_GRACE)
+  }
 
   /** 重新获取签名 URL 并重载（解决签名过期）；需 mount/connect 时提供 getEmbedUrl */
   SightReportInstance.prototype.reload = function () {

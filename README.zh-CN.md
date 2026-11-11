@@ -338,6 +338,7 @@ const state = await report.getState()         // 先看 state.fileType，再决�
 const p = await report.getParameters(['year']) // 读当前生效参数（不传 names ＝全给）
 const cell = await report.getCellValue('C4')  // 单元格渲染后显示值（仅 grid）
 await report.export('excel')                  // 受理即回；没有完成事件可等
+const file = await report.getExportFile('pdf') // 拿文件内容（不下载）：{ blob, fileName, size }
 await report.reload()                         // 重新取签名 URL 并重载
 ```
 
@@ -348,6 +349,7 @@ await report.reload()                         // 重新取签名 URL 并重载
 | `setParameters(params, { query })` | 合并参数；`query !== false` 时立即出数并等完成 |
 | `query()` / `reset()` | 重新查询 / 重置参数 |
 | `export(format)` / `print(command)` | 受理即回，完成看对应事件 |
+| `getExportFile(format, { maxBytes, timeoutMs })` | 拿到文件才 resolve，回 `{ blob, fileName, contentType, size, format }`；与工具栏导出同一份文件。见下方「取文件内容」 |
 | `getParameters(names?, { raw })` | 读参数。`names` 省略＝全给，挑不到的键不出现在结果里；`raw` 只对仪表盘有区别（缺省是含日期展开与联动叠加的**生效值**） |
 | `getState()` | 先看 `fileType`：grid / document 回参数、变量、页码、sheet；dashboard 回页签、联动、数据更新时间 |
 | `setSheet(sheetId)` | 多 sheet（页签）报表切换 —— **仅 grid** |
@@ -361,6 +363,39 @@ await report.reload()                         // 重新取签名 URL 并重载
 如果宿主是 Vue 应用且能引入报表组件，也可以用组件方式
 `<ReportView ref="reportRef" :file-id="reportId" @report-event="onReportEvent" />`——
 组件通道不需要订阅，事件全量触发，方法经 `ref` 直接调。
+
+#### 取文件内容（发远程打印 / 归档 / 上传）
+
+报表已经在 iframe 里展示、宿主还要拿到文件本身时，用 `getExportFile`，**不需要后端再签名或代理文件流**：
+报表页面用自己的嵌入会话请求导出，再把 Blob 经 `postMessage` 交回宿主。
+
+```js
+const file = await report.getExportFile('pdf', { maxBytes: 50 * 1024 * 1024 })
+// file = { blob, fileName: '销售月报.pdf', contentType: 'application/pdf', size: 482113, format: 'pdf' }
+await fetch('/my-backend/remote-print', { method: 'POST', body: file.blob })
+```
+
+- **与工具栏导出同一份文件**：格式参数就是导出菜单的命令名——`pdf`（全部）、`pdfCurrent`（当前页）、
+  `pdfCurrentSheet`（多 sheet 时仅当前 sheet），`word` / `excel` / `csv` / `ofd` 同理；
+  参数取「最后一次查询」的提交快照，改了查询表单没点查询不会混进来。
+- **仪表盘与大屏不支持**（回 `unsupported:`；仪表盘的 `export('pdf')` 是前端整页截图，没有服务端文件可取）；
+  大数据量明细 Excel 走异步任务，也回 `unsupported:`，请用 `export('excel')`。
+
+**大文件**：
+
+| 关注点 | 处理 |
+| --- | --- |
+| 传输 | 报表侧用 `response.blob()`，经 `postMessage` 传 Blob 只传引用、**不复制字节**；浏览器可把大 Blob 放磁盘 |
+| 内存上限 | `maxBytes` 默认 **100 MB**，`0` 不限。先看 `Content-Length`，超了**直接中断下载**，不读进内存；分块传输没有长度时读完再判 |
+| 超时 | `timeoutMs` 默认 **120 秒**（普通 invoke 是 30 秒）。到点报表侧中断请求，回 `timeout:` |
+| 并发 | 同一报表同时只允许一个 `getExportFile`，第二个回 `busy:`——并发取大文件会让宿主和 iframe 的内存一起翻倍 |
+| 服务端 | PDF / Word 是**同步生成**，超大报表首字节就可能很慢，网关超时要留够；真要几百页，先用参数缩小范围或按页（`pdfCurrent`）分批取 |
+| 宿主转发 | 拿到 Blob 直接作为 `fetch` 的 `body` 上传即可，不要转 base64——会多出 1/3 体积，还要整份进内存 |
+
+失败一律 reject，`error.message` 带前缀便于分支：`too-large:` / `timeout:` / `busy:` / `unsupported:` /
+`session-expired:`（会话过期且自动续期失败，`reload()` 后重试）/ `export-failed:` / `invalid format:` / `not-ready`。
+
+> 需要报表系统版本包含 `getExportFile`（旧版本回 `unknown method: getExportFile`）。
 
 ### 场景四：获取报表列表
 

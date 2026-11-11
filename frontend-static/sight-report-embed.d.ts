@@ -50,6 +50,34 @@ export interface CellValue {
   text: string
 }
 
+/** getExportFile 的结果 */
+export interface ExportFile {
+  /** 文件内容；经 postMessage 传过来只传引用、不复制字节 */
+  blob: Blob
+  /** 取自 Content-Disposition，缺省为 报表_{reportId}.{扩展名} */
+  fileName: string
+  contentType: string
+  /** 字节数 */
+  size: number
+  /** 实际导出格式：pdf / excel / word / csv / ofd */
+  format: string
+}
+
+export interface GetExportFileOptions {
+  /** 上限字节数，默认 100 MB，0 不限。超了 reject `too-large:`，报表侧不会把整份读进内存 */
+  maxBytes?: number
+  /** 默认 120000。到点报表侧中断请求并 reject `timeout:` */
+  timeoutMs?: number
+}
+
+/** 与工具栏导出菜单同一套命令名 */
+export type ExportCommand =
+  | 'pdf' | 'pdfCurrent' | 'pdfCurrentSheet'
+  | 'word' | 'wordCurrent' | 'wordCurrentSheet'
+  | 'excel' | 'excelCurrent' | 'excelCurrentSheet'
+  | 'csv' | 'csvCurrent'
+  | 'ofd' | 'ofdCurrent'
+
 export interface MountOptions {
   /** 后端生成的签名嵌入地址（与 getEmbedUrl 二选一） */
   embedUrl?: string
@@ -81,6 +109,12 @@ export interface SightReportInstance {
   reset(): Promise<{ success: boolean }>
   /** 受理即回；完成/失败监听 report:export / report:error */
   export(format: 'excel' | 'pdf' | 'word' | 'csv' | 'ofd' | string): Promise<{ accepted: boolean }>
+  /**
+   * 取导出文件内容（不下载），用于发远程打印、归档、上传。与工具栏导出是同一份文件。
+   * 失败前缀：too-large: / timeout: / busy: / unsupported:（仪表盘、大屏、大数据量明细 Excel）/
+   * session-expired: / export-failed: / invalid format: / not-ready
+   */
+  getExportFile(format?: ExportCommand | string, options?: GetExportFileOptions): Promise<ExportFile>
   print(command?: string): Promise<{ accepted: boolean }>
   getState(): Promise<ReportState>
   setSheet(sheetId: string): Promise<{ activeSheetId: string }>
