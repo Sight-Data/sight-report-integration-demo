@@ -239,6 +239,9 @@ GET {baseUrl}/embed.html?reportId={reportId}&_s={signature}
 | `hideToolbar` | `true` 隐藏工具栏（打印 / 导出 / 分页） |
 | `showQueryForm` | `false` 隐藏查询表单 |
 | `viewMode` | `pagination`（分页，默认）/ `all`（全部数据） |
+| `zoom` | 显示比例：`fitWidth`（适应宽度，网格 / 单据整体等比缩放到正好铺满 iframe 宽度，iframe 尺寸变化时自动重算）或 10~300 的百分比（如 `75`）。不传则按查看人上次在工具栏选的比例（记在其浏览器）、再按报表设置「默认显示比例」。只影响屏幕显示，不影响打印与导出；与 `hideToolbar` 互不影响。旧写法 `fitWidth=true` / `false` 等同 `zoom=fitWidth` / `zoom=100` |
+
+> `zoom` 与 `setZoom` 需要平台版本带有「显示比例」功能；旧版本会忽略 `zoom` 参数，`setZoom` 返回 `unknown method`。
 
 ```js
 // 宿主前端：URL 由自己的后端返回，前端不参与签名
@@ -351,7 +354,8 @@ await report.reload()                         // 重新取签名 URL 并重载
 | `export(format)` / `print(command)` | 受理即回，完成看对应事件 |
 | `getExportFile(format, { maxBytes, timeoutMs })` | 拿到文件才 resolve，回 `{ blob, fileName, contentType, size, format }`；与工具栏导出同一份文件。见下方「取文件内容」 |
 | `getParameters(names?, { raw })` | 读参数。`names` 省略＝全给，挑不到的键不出现在结果里；`raw` 只对仪表盘有区别（缺省是含日期展开与联动叠加的**生效值**） |
-| `getState()` | 先看 `fileType`：grid / document 回参数、变量、页码、sheet；dashboard 回页签、联动、数据更新时间 |
+| `getState()` | 先看 `fileType`：grid / document 回参数、变量、页码、sheet、显示比例（`zoom` 设定值、`scale` 实际缩放比）；dashboard 回页签、联动、数据更新时间 |
+| `setZoom(zoom)` | 显示比例：`'fitWidth'` 或百分比（`75` / `'75%'`），与工具栏「显示比例」下拉同一状态，工具栏隐藏时也能调 —— **grid / document** |
 | `setSheet(sheetId)` | 多 sheet（页签）报表切换 —— **仅 grid** |
 | `getCellValue(name)` / `getCellValues(name)` | 单元格渲染后显示值（首个 / 全部）—— **仅 grid** |
 | `setTab(tabId)` / `getTabs()` | 仪表盘页签切换 —— **仅 dashboard** |

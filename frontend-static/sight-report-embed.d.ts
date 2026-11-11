@@ -28,6 +28,9 @@ export interface HostEventEnvelope {
   timestamp: number
 }
 
+/** 显示比例：'fitWidth'（适应宽度，整体缩放铺满 iframe 宽度）或 10~300 的百分比 */
+export type ViewZoom = 'fitWidth' | number
+
 export interface ReportState {
   reportId: string
   /** 当前报表类型——决定哪些方法可用 */
@@ -39,6 +42,10 @@ export interface ReportState {
   currentPage?: number
   totalPages?: number
   activeSheetId?: string
+  /** grid / document：显示比例设定值（'fitWidth' 或百分比，100 为原始大小） */
+  zoom?: ViewZoom
+  /** grid / document：实际缩放比（适应宽度时随窗口变化，如 0.68） */
+  scale?: number
   /** dashboard */
   activeTabId?: string
   crossFilter?: { field?: string; value?: unknown; values?: unknown[]; sourceBlockId?: string } | null
@@ -121,6 +128,11 @@ export interface SightReportInstance {
   /** 取单元格渲染后显示值（首个匹配；**仅 grid**，单据与仪表盘回 unsupported） */
   getCellValue(cellName: string): Promise<CellValue>
   getCellValues(cellName: string): Promise<CellValue[]>
+  /**
+   * 显示比例（grid / document）：'fitWidth' 或百分比（数字或 '75%'），与工具栏「显示比例」下拉同一状态，
+   * 工具栏隐藏时也可调；只影响屏幕显示。大屏与仪表盘回 unsupported，取值认不出回 invalid zoom。
+   */
+  setZoom(zoom: ViewZoom | string): Promise<{ zoom: ViewZoom }>
   /** 仪表盘页签（相当于 grid 的 setSheet）；其他类型回 unsupported */
   getTabs(): Promise<Array<{ id: string; name: string }>>
   setTab(tabId: string): Promise<{ activeTabId: string }>

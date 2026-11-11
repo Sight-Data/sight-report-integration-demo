@@ -51,6 +51,7 @@
 
     // 场景 1
     viewMode: $('viewMode'),
+    zoom: $('zoom'),
     embedReportMirror: $('embedReportMirror'),
     hideToolbar: $('hideToolbar'),
     showQueryForm: $('showQueryForm'),
@@ -140,6 +141,7 @@
     'expireMinutes',
     'reportId',
     'viewMode',
+    'zoom',
     'exportFileName',
     'exportPageIndex',
     'tag',
@@ -541,7 +543,8 @@
       '    parameters: ' + JSON.stringify(paramsText) + ',',
       '    hideToolbar: ' + String(el.hideToolbar.checked) + ',',
       '    showQueryForm: ' + String(el.showQueryForm.checked) + ',',
-      '    viewMode: ' + JSON.stringify(el.viewMode.value),
+      '    viewMode: ' + JSON.stringify(el.viewMode.value) + (el.zoom.value ? ',' : ''),
+      ...(el.zoom.value ? ['    zoom: ' + JSON.stringify(el.zoom.value) + '   // 显示比例：fitWidth 或百分比'] : []),
       '  })',
       '  res.send(' + JSON.stringify(c.baseUrl + '/embed.html?') + ' + query.toString())',
       '})',
@@ -596,6 +599,7 @@
       'const state = await report.getState()      // 参数/变量/页码/加载状态',
       'const cell  = await report.getCellValue(' + JSON.stringify(el.invokeCellName.value.trim() || 'A1') + ')',
       "await report.export('excel')               // 受理即回，完成看 report:export",
+      "await report.setZoom('fitWidth')           // 显示比例：'fitWidth' 或 75 等百分比",
       '',
       '// 拿文件内容（不下载）：发远程打印 / 归档。与工具栏导出同一份文件',
       "const file = await report.getExportFile('pdf', { maxBytes: 50 * 1024 * 1024 })",
@@ -725,7 +729,8 @@
         parameters,
         hideToolbar: el.hideToolbar.checked,
         showQueryForm: el.showQueryForm.checked,
-        viewMode: el.viewMode.value
+        viewMode: el.viewMode.value,
+        zoom: el.zoom.value
       })
     })
 
@@ -1030,7 +1035,8 @@
         parameters,
         hideToolbar: el.hideToolbar.checked,
         showQueryForm: el.showQueryForm.checked,
-        viewMode: el.viewMode.value
+        viewMode: el.viewMode.value,
+        zoom: el.zoom.value
       })
     })
     applyEmbedUrl(data.embedUrl)
@@ -1202,6 +1208,8 @@
       })
     )
   )
+  $('invokeZoomFitBtn').addEventListener('click', () => runInvoke('setZoom', (i) => i.setZoom('fitWidth')))
+  $('invokeZoom100Btn').addEventListener('click', () => runInvoke('setZoom', (i) => i.setZoom(100)))
 
   el.discoverBtn.addEventListener('click', guard(discoverReports))
   el.pickerFilter.addEventListener('input', renderReportList)

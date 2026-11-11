@@ -253,6 +253,9 @@ GET {baseUrl}/embed.html?reportId={reportId}&_s={signature}
 | `hideToolbar` | `true` hides the toolbar (print / export / paging) |
 | `showQueryForm` | `false` hides the query form |
 | `viewMode` | `pagination` (default) or `all` |
+| `zoom` | display zoom: `fitWidth` (fit width — grid / document reports scale uniformly to exactly fill the iframe width, recalculated when the iframe resizes) or a percentage from 10 to 300 (e.g. `75`). If omitted, the viewer's last choice from the toolbar (remembered in their browser) applies, then the report's "default zoom" setting. Affects the screen only — printing and export are unchanged; independent of `hideToolbar`. Legacy `fitWidth=true` / `false` equals `zoom=fitWidth` / `zoom=100` |
+
+> `zoom` and `setZoom` need a platform version that ships the display-zoom feature; older versions ignore the `zoom` parameter and `setZoom` returns `unknown method`.
 
 ```js
 // Host frontend: the URL comes from your own backend; the browser never signs anything
@@ -369,7 +372,8 @@ With an existing iframe element use `SightReportEmbed.connect(iframeEl)`.
 | `export(format)` / `print(command)` | resolve on accept; completion arrives as an event |
 | `getExportFile(format, { maxBytes, timeoutMs })` | resolves with `{ blob, fileName, contentType, size, format }` once the file is in hand — the same file the toolbar export produces. See "Getting the file content" below |
 | `getParameters(names?, { raw })` | read parameters. Omit `names` for all; keys that don't exist are absent from the result. `raw` only differs on dashboards (the default is the **effective** value, including expanded date ranges and cross-filters) |
-| `getState()` | check `fileType` first: grid / document return parameters, variables, paging and sheet; dashboard returns the active tab, cross-filter and last-updated time |
+| `getState()` | check `fileType` first: grid / document return parameters, variables, paging, sheet and zoom (`zoom` = setting, `scale` = actual factor); dashboard returns the active tab, cross-filter and last-updated time |
+| `setZoom(zoom)` | display zoom: `'fitWidth'` or a percentage (`75` / `'75%'`); same state as the toolbar zoom dropdown, works even when the toolbar is hidden — **grid / document** |
 | `setSheet(sheetId)` | switch sheet (tab) — **grid only** |
 | `getCellValue(name)` / `getCellValues(name)` | rendered cell text (first / all matches) — **grid only** |
 | `setTab(tabId)` / `getTabs()` | switch dashboard tab — **dashboard only** |

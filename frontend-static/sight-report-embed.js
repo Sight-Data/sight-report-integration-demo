@@ -255,6 +255,7 @@
     'setSheet',
     'getCellValue',
     'getCellValues',
+    'setZoom',
     'setTab',
     'getTabs',
   ]
