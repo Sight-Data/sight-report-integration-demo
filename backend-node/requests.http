@@ -28,6 +28,7 @@ Content-Type: application/json
   "hideToolbar": false,
   "showQueryForm": true,
   "viewMode": "all",
+  "zoom": "fitWidth",
   "expireMinutes": {{expireMinutes}}
 }
 

@@ -25,10 +25,11 @@
 - [ ] 第 2 步能列出报表（`type-tree` 或 `tag-list` 有数据）
 - [ ] 第 3 步能打开报表，右侧事件日志出现 `report:loaded`
 - [ ] 查询参数生效（改 `parameters` 后数据随之变化）
-- [ ] `hideToolbar` / `showQueryForm` / `viewMode` 三个显示开关行为符合预期
+- [ ] `hideToolbar` / `showQueryForm` / `viewMode` / `zoom` 四个显示参数行为符合预期
+- [ ] `zoom=fitWidth`：宽表缩小到正好铺满 iframe、没有横向滚动条；拖动改变 iframe 宽度后自动重新缩放
 - [ ] 点击「订阅所选」后，在报表里查询/导出能看到 `report:query` / `report:export`
 - [ ] （可选）配了「发送事件」链接的单元格，点击后能收到自定义事件与 payload
-- [ ] 宿主调用面板：`getState`、`setParameters`、`getCellValue` 均返回预期结果
+- [ ] 宿主调用面板：`getState`、`setParameters`、`getCellValue` 均返回预期结果；`setZoom` 切换后 `getState().zoom` 随之变化
 - [ ] 服务端导出：PDF / Excel 至少各成功一次，文件能正常打开
 - [ ] （可选）外部数据集：上传拿到 token → 带 token 预览 → 清除
 

@@ -63,6 +63,15 @@ function normalizeViewMode(value) {
   return value === 'all' ? 'all' : 'pagination'
 }
 
+// 显示比例：'fitWidth'（适应宽度）或 10~300 的百分比；其余（含空）不传，由报表按查看人上次的选择 / 报表设置决定
+function normalizeZoom(value) {
+  if (value == null || value === '') return undefined
+  if (String(value).trim().toLowerCase() === 'fitwidth') return 'fitWidth'
+  const percent = Math.round(Number(String(value).trim().replace(/%$/, '')))
+  if (!Number.isFinite(percent) || percent <= 0) return undefined
+  return Math.min(300, Math.max(10, percent))
+}
+
 function getSignedRequestContext(input, reportIdFallback = '') {
   const account = requireString(input.account, 'account')
   const userName = requireString(input.userName, 'userName')
@@ -95,7 +104,8 @@ function buildEmbedResponse(body) {
       parameters: body.parameters,
       hideToolbar: body.hideToolbar,
       showQueryForm: body.showQueryForm,
-      viewMode: normalizeViewMode(body.viewMode)
+      viewMode: normalizeViewMode(body.viewMode),
+      zoom: normalizeZoom(body.zoom)
     }
   })
 

@@ -91,9 +91,12 @@ docker compose up --build
   "hideToolbar": true,
   "showQueryForm": false,
   "viewMode": "all",
+  "zoom": "fitWidth",
   "expireMinutes": 10
 }
 ```
+
+`zoom` 可选：`fitWidth`（适应宽度，整体缩放铺满 iframe 宽度）或 10~300 的百分比（如 `75`）；不传则按查看人上次在工具栏选的比例、再按报表设置。
 
 响应：`{ "embedUrl": "...", "expireAt": 1735660800, "signatureToken": "..." }`
 
