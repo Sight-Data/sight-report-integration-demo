@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sight Report 集成控制台 · Integration Console</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <!-- ── 顶栏 ───────────────────────────────────────── -->
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark">SR</span>
+          <div class="brand-text">
+            <h1>Sight Report 集成控制台</h1>
+            <p>按场景演示：嵌入查看 · 接收事件 · 宿主调用 · 报表发现 · 服务端导出 · 外部数据集</p>
+          </div>
+        </div>
+        <div class="status-strip">
+          <div class="pill" id="pillConnection" data-state="unknown">
+            <span class="dot"></span>
+            <span class="pill-label">连接</span>
+            <strong id="connectionText">未检测</strong>
+          </div>
+          <div class="pill">
+            <span class="pill-label">报表系统</span>
+            <strong id="reportBaseText">-</strong>
+          </div>
+          <div class="pill">
+            <span class="pill-label">appId</span>
+            <strong id="appIdText">-</strong>
+          </div>
+          <button id="helpSignatureBtn" class="ghost small">接入说明</button>
+          <a class="top-link" href="../README.zh-CN.md" target="_blank" rel="noreferrer">README</a>
+          <a
+            class="top-link"
+            href="https://github.com/Sight-Data/sight-report-integration-demo"
+            target="_blank"
+            rel="noreferrer"
+            >GitHub</a
+          >
+        </div>
+      </header>
+
+      <!-- ── 共享上下文：所有场景公用 ────────────────────── -->
+      <section class="context-bar" aria-label="共享上下文">
+        <div class="context-row">
+          <label class="ctx-field wide">
+            <span>Demo 后端</span>
+            <input id="backendBaseUrl" type="text" value="http://localhost:3010" spellcheck="false" />
+          </label>
+          <button id="loadConfigBtn" class="secondary small">读取配置并检测</button>
+          <span class="ctx-sep"></span>
+          <label class="ctx-field">
+            <span>account</span>
+            <input id="account" type="text" value="u1001" spellcheck="false" />
+          </label>
+          <label class="ctx-field">
+            <span>userName</span>
+            <input id="userName" type="text" value="张三" />
+          </label>
+          <label class="ctx-field narrow">
+            <span>有效期(分)</span>
+            <input id="expireMinutes" type="number" value="10" min="1" />
+          </label>
+          <label class="ctx-field wide">
+            <span>reportId</span>
+            <input id="reportId" type="text" placeholder="在「报表发现」里选，或手填" spellcheck="false" />
+          </label>
+          <span class="ctx-actions">
+            <button id="paramsToggleBtn" class="secondary small">
+              查询参数 <span id="paramCount" class="count">0</span>
+            </button>
+            <button id="resetStateBtn" class="ghost small" title="清除本地保存的表单值">重置</button>
+          </span>
+        </div>
+        <div id="backendInfo" class="banner neutral slim">
+          这一行的值被所有场景共用：它们都会被写进签名。<strong>appSecret 只在 demo 后端里</strong>，浏览器拿不到。
+        </div>
+        <div id="paramsDrawer" class="params-drawer hidden">
+          <div class="param-head">
+            <span>报表查询参数（嵌入 / 导出 / 外部数据集 共用）</span>
+            <div class="param-actions">
+              <button id="paramAddBtn" class="ghost small">+ 添加</button>
+              <button id="paramJsonBtn" class="ghost small">JSON 视图</button>
+            </div>
+          </div>
+          <div id="paramRows" class="param-rows"></div>
+          <textarea id="paramJson" class="param-json hidden" rows="5" spellcheck="false"></textarea>
+          <div id="paramError" class="banner danger hidden"></div>
+        </div>
+      </section>
+
+      <!-- ── 场景页签（横向，省宽度） ─────────────────────── -->
+      <nav class="scene-tabs" aria-label="集成场景">
+        <button class="scene-item active" data-scene="embed">
+          <span class="scene-num">1</span>
+          <span class="scene-text"><strong>嵌入查看报表</strong><em>签名 URL + iframe</em></span>
+        </button>
+        <button class="scene-item" data-scene="events">
+          <span class="scene-num">2</span>
+          <span class="scene-text"><strong>接收报表事件</strong><em>loaded / 单元格 / 订阅</em></span>
+        </button>
+        <button class="scene-item" data-scene="invoke">
+          <span class="scene-num">3</span>
+          <span class="scene-text"><strong>宿主调用报表</strong><em>SDK invoke</em></span>
+        </button>
+        <button class="scene-item" data-scene="discover">
+          <span class="scene-num">4</span>
+          <span class="scene-text"><strong>报表发现</strong><em>目录树 / 标签</em></span>
+        </button>
+        <button class="scene-item" data-scene="export">
+          <span class="scene-num">5</span>
+          <span class="scene-text"><strong>服务端导出</strong><em>PDF / Excel / Word / CSV</em></span>
+        </button>
+        <button class="scene-item" data-scene="staged">
+          <span class="scene-num">6</span>
+          <span class="scene-text"><strong>外部数据集</strong><em>推数据进报表</em></span>
+        </button>
+      </nav>
+
+      <div class="scene-grid">
+        <!-- ── 场景面板 ──────────────────────────────────── -->
+        <section class="scene-panel">
+          <!-- 场景 1：嵌入查看 -->
+          <article class="scene active" data-scene-pane="embed">
+            <header class="scene-head">
+              <h2>场景 1 · 嵌入查看报表</h2>
+              <p>后端用 appSecret 签出一个带时效的 URL，前端拿它当 iframe 的 src。最常用的一条路。</p>
+            </header>
+            <div class="scene-body">
+              <div class="field-grid two">
+                <label class="field">
+                  <span>viewMode</span>
+                  <select id="viewMode">
+                    <option value="pagination">pagination（分页）</option>
+                    <option value="all">all（全部数据）</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>zoom（显示比例）</span>
+                  <select id="zoom">
+                    <option value="">不传（按上次选择 / 报表设置）</option>
+                    <option value="fitWidth">fitWidth（适应宽度）</option>
+                    <option value="50">50%</option>
+                    <option value="75">75%</option>
+                    <option value="100">100%</option>
+                    <option value="125">125%</option>
+                    <option value="150">150%</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>reportId</span>
+                  <input id="embedReportMirror" type="text" readonly />
+                </label>
+              </div>
+              <div class="chip-row">
+                <label class="chip"><input id="hideToolbar" type="checkbox" /><span>隐藏工具栏</span></label>
+                <label class="chip"><input id="showQueryForm" type="checkbox" checked /><span>显示查询栏</span></label>
+                <label class="chip"><input id="autoSubscribe" type="checkbox" checked /><span>打开后自动订阅事件</span></label>
+              </div>
+              <div class="row-actions">
+                <button id="openEmbedBtn" class="primary">打开报表 <kbd>⌘/Ctrl + ↵</kbd></button>
+                <button id="reloadEmbedBtn" class="secondary small" disabled>重新签名</button>
+              </div>
+              <p class="scene-tip">
+                URL 每次打开实时生成，有效期到点即失效 —— 不要缓存。生成结果看右下「embed URL」。
+              </p>
+            </div>
+            <details class="snippet">
+              <summary>对应代码（用当前表单值生成）</summary>
+              <div class="snippet-head">
+                <span>后端签名 → 前端嵌入</span>
+                <button class="ghost small" data-copy-snippet="snippetEmbed">复制</button>
+              </div>
+              <pre id="snippetEmbed"></pre>
+            </details>
+          </article>
+
+          <!-- 场景 2：接收事件 -->
+          <article class="scene" data-scene-pane="events">
+            <header class="scene-head">
+              <h2>场景 2 · 接收报表事件</h2>
+              <p>
+                <code>report:loaded</code> / <code>report:error</code> / 单元格事件零配置直达；
+                <code>query</code>·<code>query-done</code>·<code>export</code>·<code>print</code> 要先订阅。
+              </p>
+            </header>
+            <div class="scene-body">
+              <div id="eventsPrereq" class="banner warn hidden">
+                还没打开报表，收不到任何事件。
+                <button class="link-btn" data-goto-scene="embed">去场景 1 打开</button>
+              </div>
+              <div class="chip-row wrap">
+                <label class="chip"><input id="subQuery" type="checkbox" checked /><span>report:query</span></label>
+                <label class="chip"><input id="subQueryDone" type="checkbox" checked /><span>report:query-done</span></label>
+                <label class="chip"><input id="subExport" type="checkbox" checked /><span>report:export</span></label>
+                <label class="chip"><input id="subPrint" type="checkbox" checked /><span>report:print</span></label>
+              </div>
+              <div class="row-actions">
+                <button id="subscribeBtn" class="primary small">订阅所选</button>
+                <button id="subscribeAllBtn" class="secondary small">订阅全部 (*)</button>
+                <button id="helpEventsBtn" class="ghost small">接入说明</button>
+              </div>
+              <p class="scene-tip">
+                在报表里点查询/导出，或点配了「发送事件」链接的单元格，事件会出现在右下「事件日志」。
+                单元格事件在设计器配置：单元格 → 链接 → 发送事件。
+              </p>
+            </div>
+            <details class="snippet">
+              <summary>对应代码（用当前 origin 生成）</summary>
+              <div class="snippet-head">
+                <span>零配置监听 + 订阅</span>
+                <button class="ghost small" data-copy-snippet="snippetEvents">复制</button>
+              </div>
+              <pre id="snippetEvents"></pre>
+            </details>
+          </article>
+
+          <!-- 场景 3：宿主调用 -->
+          <article class="scene" data-scene-pane="invoke">
+            <header class="scene-head">
+              <h2>场景 3 · 宿主调用报表</h2>
+              <p>反方向：宿主页面调报表的方法。用零依赖 SDK <code>sight-report-embed.js</code>，不用碰协议细节。</p>
+            </header>
+            <div class="scene-body">
+              <div id="invokePrereq" class="banner warn hidden">
+                需要先打开报表。
+                <button class="link-btn" data-goto-scene="embed">去场景 1 打开</button>
+              </div>
+              <div class="field-grid two">
+                <label class="field">
+                  <span>setParameters JSON</span>
+                  <input id="invokeParams" type="text" value='{"year":2025,"month":6}' spellcheck="false" />
+                </label>
+                <label class="field">
+                  <span>cellName</span>
+                  <input id="invokeCellName" type="text" value="A1" spellcheck="false" />
+                </label>
+              </div>
+              <div class="btn-grid">
+                <button id="invokeSetParamsBtn" class="secondary small">setParameters</button>
+                <button id="invokeQueryBtn" class="secondary small">query</button>
+                <button id="invokeResetBtn" class="secondary small">reset</button>
+                <button id="invokeGetStateBtn" class="secondary small">getState</button>
+                <button id="invokeGetCellBtn" class="secondary small">getCellValue</button>
+                <button id="invokeGetCellsBtn" class="secondary small">getCellValues</button>
+                <button id="invokePrintBtn" class="secondary small">print</button>
+                <button id="invokeExportBtn" class="secondary small">export(excel)</button>
+                <button id="invokeExportFileBtn" class="secondary small">getExportFile(pdf)</button>
+                <button id="invokeZoomFitBtn" class="secondary small">setZoom('fitWidth')</button>
+                <button id="invokeZoom100Btn" class="secondary small">setZoom(100)</button>
+              </div>
+              <p class="scene-tip">
+                写类方法在首次渲染完成前返回 <code>not-ready</code>；<code>export</code>/<code>print</code>
+                受理即回，完成看事件。返回值在右下「调用结果」。
+              </p>
+            </div>
+            <details class="snippet">
+              <summary>对应代码</summary>
+              <div class="snippet-head">
+                <span>SDK 用法</span>
+                <button class="ghost small" data-copy-snippet="snippetInvoke">复制</button>
+              </div>
+              <pre id="snippetInvoke"></pre>
+            </details>
+          </article>
+
+          <!-- 场景 4：报表发现 -->
+          <article class="scene" data-scene-pane="discover">
+            <header class="scene-head">
+              <h2>场景 4 · 报表发现</h2>
+              <p>先让用户挑报表再打开。签名里的 reportId 留空，返回应用白名单范围内的全部结果。</p>
+            </header>
+            <div class="scene-body">
+              <div class="picker-head">
+                <div class="seg" role="tablist" aria-label="发现方式">
+                  <button class="seg-btn active" data-discover="type-tree" role="tab">按目录树</button>
+                  <button class="seg-btn" data-discover="tag-list" role="tab">按标签</button>
+                </div>
+                <button id="discoverBtn" class="primary small">加载列表</button>
+              </div>
+              <div class="field-grid two">
+                <label class="field" id="fileTypeField">
+                  <span>fileType</span>
+                  <select id="fileType">
+                    <option value="grid">grid（网格报表）</option>
+                    <option value="document">document（文档报表）</option>
+                    <option value="datawall">datawall（大屏）</option>
+                    <option value="mobile">mobile（移动端）</option>
+                  </select>
+                </label>
+                <label class="field hidden" id="tagField">
+                  <span>tag</span>
+                  <input id="tag" type="text" value="monthly" spellcheck="false" />
+                </label>
+                <label class="field">
+                  <span>过滤</span>
+                  <input id="pickerFilter" type="search" placeholder="报表名称 / ID" />
+                </label>
+              </div>
+              <div id="reportList" class="report-list">
+                <div class="empty-hint">
+                  还没加载。点「加载列表」后，选中的报表会写进上方共享的 <code>reportId</code>，
+                  其他场景直接可用。原始 JSON 在右下「发现结果」。
+                </div>
+              </div>
+            </div>
+            <details class="snippet">
+              <summary>对应代码</summary>
+              <div class="snippet-head">
+                <span>后端签名 + 调用发现接口</span>
+                <button class="ghost small" data-copy-snippet="snippetDiscover">复制</button>
+              </div>
+              <pre id="snippetDiscover"></pre>
+            </details>
+          </article>
+
+          <!-- 场景 5：服务端导出 -->
+          <article class="scene" data-scene-pane="export">
+            <header class="scene-head">
+              <h2>场景 5 · 服务端导出</h2>
+              <p>服务端直接拿文件流，用于下载、归档、邮件、定时任务。不需要浏览器参与渲染。</p>
+            </header>
+            <div class="scene-body">
+              <div class="field-grid two">
+                <label class="field">
+                  <span>导出文件名（可选）</span>
+                  <input id="exportFileName" type="text" placeholder="留空用报表名" />
+                </label>
+                <label class="field">
+                  <span>pageIndex（可选）</span>
+                  <input id="exportPageIndex" type="number" min="1" placeholder="留空导出全部" />
+                </label>
+              </div>
+              <div class="btn-grid four">
+                <button class="secondary small" data-export="pdf">PDF</button>
+                <button class="secondary small" data-export="excel">Excel</button>
+                <button class="secondary small" data-export="word">Word</button>
+                <button class="secondary small" data-export="csv">CSV</button>
+              </div>
+              <p class="scene-tip">
+                签名里的 <code>reportId</code> 必须与请求参数 <code>fileId</code> 完全一致，
+                <strong>不可留空</strong>，否则服务端拒绝。有效期建议 5~15 分钟。
+              </p>
+            </div>
+            <details class="snippet">
+              <summary>对应代码</summary>
+              <div class="snippet-head">
+                <span>服务端导出（Node）</span>
+                <button class="ghost small" data-copy-snippet="snippetExport">复制</button>
+              </div>
+              <pre id="snippetExport"></pre>
+            </details>
+          </article>
+
+          <!-- 场景 6：外部数据集 -->
+          <article class="scene" data-scene-pane="staged">
+            <header class="scene-head">
+              <h2>场景 6 · 外部数据集</h2>
+              <p>报表用「外部数据集」时，数据由你的系统推过来：先上传拿 token，再把 token 带进参数。</p>
+            </header>
+            <div class="scene-body">
+              <label class="field">
+                <span>datasets JSON</span>
+                <textarea id="stagedDatasets" rows="6" spellcheck="false">{"orders":[{"orderId":"ORD-001","product":"Widget A","quantity":10,"price":99.5},{"orderId":"ORD-002","product":"Widget B","quantity":5,"price":149}]}</textarea>
+              </label>
+              <div id="stagedStatus" class="banner neutral">未上传</div>
+              <div class="row-actions">
+                <button id="stagedSetBtn" class="primary small">上传数据</button>
+                <button id="stagedEmbedBtn" class="secondary small" disabled>带 token 预览</button>
+                <button id="stagedClearBtn" class="ghost small" disabled>清除</button>
+                <button id="helpStagedBtn" class="ghost small">接入说明</button>
+              </div>
+              <p class="scene-tip">
+                每次上传生成新 token，不支持追加；默认保留 24 小时，payload 上限 5 MB。
+                预览时会把 <code>_dataIds</code> 合并进共享的查询参数。
+              </p>
+            </div>
+            <details class="snippet">
+              <summary>对应代码</summary>
+              <div class="snippet-head">
+                <span>上传 → 带 token 嵌入</span>
+                <button class="ghost small" data-copy-snippet="snippetStaged">复制</button>
+              </div>
+              <pre id="snippetStaged"></pre>
+            </details>
+          </article>
+        </section>
+
+        <!-- ── 舞台：预览 + 观察窗 ───────────────────────── -->
+        <div class="stage">
+          <main class="viewer">
+            <header class="viewer-head">
+              <div class="viewer-title">
+                <h2>报表预览</h2>
+                <span id="viewerStatus" class="state-chip" data-state="idle">未打开</span>
+              </div>
+              <div class="viewer-actions">
+                <a id="openNewWindowLink" class="link disabled" href="#" target="_blank" rel="noreferrer">新窗口打开</a>
+              </div>
+            </header>
+            <div class="viewer-stage">
+              <iframe id="reportFrame" title="Sight Report 嵌入预览"></iframe>
+              <div id="viewerEmpty" class="viewer-empty">
+                <div class="viewer-empty-inner">
+                  <h3>还没有打开报表</h3>
+                  <ol>
+                    <li>顶部填好 Demo 后端并点「读取配置并检测」</li>
+                    <li>场景 4 选一个报表（或直接手填 reportId）</li>
+                    <li>回场景 1 点「打开报表」</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </main>
+
+          <aside class="inspector" aria-label="观察窗">
+            <div class="inspector-head">
+              <div class="tabs" role="tablist" aria-label="观察窗">
+                <button class="tab active" data-insp="events" role="tab">事件日志</button>
+                <button class="tab" data-insp="invoke" role="tab">调用结果</button>
+                <button class="tab" data-insp="url" role="tab">embed URL</button>
+                <button class="tab" data-insp="discovery" role="tab">发现结果</button>
+                <button class="tab" data-insp="requests" role="tab">请求日志</button>
+              </div>
+              <div class="inspector-tools">
+                <button class="icon-btn" id="inspCopyBtn" title="复制当前面板">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                </button>
+                <button class="icon-btn" id="inspClearBtn" title="清空当前面板">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                </button>
+                <button class="icon-btn" id="inspExpandBtn" title="放大查看">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" /></svg>
+                </button>
+              </div>
+            </div>
+            <div class="inspector-body">
+              <pre class="pane active" data-insp-pane="events" id="paneEvents"></pre>
+              <pre class="pane" data-insp-pane="invoke" id="paneInvoke"></pre>
+              <pre class="pane" data-insp-pane="url" id="paneUrl"></pre>
+              <pre class="pane" data-insp-pane="discovery" id="paneDiscovery"></pre>
+              <pre class="pane" data-insp-pane="requests" id="paneRequests"></pre>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+
+    <div id="toastHost" class="toast-host" aria-live="polite"></div>
+
+    <!-- ── 弹窗：放大查看 ─────────────────────────────── -->
+    <div id="expandModal" class="modal-backdrop" hidden>
+      <div class="modal">
+        <div class="modal-head">
+          <h2 id="expandTitle">详情</h2>
+          <div class="modal-actions">
+            <button id="expandCopyBtn" class="ghost small">复制</button>
+            <button data-close-modal class="ghost small">关闭</button>
+          </div>
+        </div>
+        <div class="modal-body"><pre id="expandContent"></pre></div>
+      </div>
+    </div>
+
+    <!-- ── 弹窗：接入总览与签名规则 ───────────────────── -->
+    <div id="signatureHelpModal" class="modal-backdrop" hidden>
+      <div class="modal">
+        <div class="modal-head">
+          <h2>接入总览与签名规则</h2>
+          <div class="modal-actions"><button data-close-modal class="ghost small">关闭</button></div>
+        </div>
+        <div class="modal-body doc">
+          <h3>六个场景对应的接口</h3>
+          <ul>
+            <li><strong>嵌入查看</strong> — <code>embed.html?reportId={id}&amp;_s={signature}</code></li>
+            <li><strong>接收事件</strong> — 宿主 <code>window.addEventListener('message', ...)</code></li>
+            <li><strong>宿主调用</strong> — <code>postMessage</code> 的 <code>invoke</code> 通道（SDK 已封装）</li>
+            <li><strong>报表发现</strong> — <code>/api/embed/report/type-tree</code>、<code>/api/embed/report/tag-list</code></li>
+            <li><strong>服务端导出</strong> — <code>/api/embed/export/{pdf|excel|word|csv}</code></li>
+            <li><strong>外部数据集</strong> — <code>/api/embed/staged-dataset/set</code>、<code>/clear</code></li>
+          </ul>
+
+          <h3>签名规则（六个场景共用）</h3>
+          <ul>
+            <li>签名内容：<code>appId | account | userName | reportId | expireAt</code>（竖线连接）</li>
+            <li>算法：<code>HMAC-SHA256(签名内容, appSecret)</code>，输出十六进制</li>
+            <li>参数体：上述字段 + <code>signature</code> 组成 JSON，再 Base64Url 编码（无填充），作为 <code>_s</code></li>
+            <li>expireAt 是 Unix 秒；查看类建议 5~15 分钟，每次打开实时生成，不要缓存 URL</li>
+          </ul>
+
+          <h3>reportId 绑定规则</h3>
+          <ul>
+            <li>查看报表：建议绑定具体 reportId</li>
+            <li>报表发现：通常留空，返回应用白名单范围内全部结果</li>
+            <li>服务端导出：必须与请求参数 <code>fileId</code> 完全一致，不可留空</li>
+          </ul>
+
+          <h3>务必注意</h3>
+          <ul>
+            <li><strong>appSecret 只在服务端使用</strong>，不可下发到浏览器或客户端</li>
+            <li>外部用户会映射为内部用户，格式 <code>ext__{appId}__{account}</code></li>
+            <li>配置「报表白名单」后，发现接口也会自动受限，第三方无需再过滤</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 弹窗：事件接入说明 ─────────────────────────── -->
+    <div id="eventsHelpModal" class="modal-backdrop" hidden>
+      <div class="modal">
+        <div class="modal-head">
+          <h2>报表事件 — 接入说明</h2>
+          <div class="modal-actions"><button data-close-modal class="ghost small">关闭</button></div>
+        </div>
+        <div class="modal-body doc">
+          <h3>事件分两级</h3>
+          <ul>
+            <li>
+              <strong>零配置直发</strong>：<code>report:loaded</code>（首次渲染完成，payload <code>{ elapsedMs }</code>）、
+              <code>report:error</code>（payload <code>{ phase, message }</code>）、
+              <strong>单元格事件</strong>（设计器「发送事件」链接配置）
+            </li>
+            <li>
+              <strong>订阅后才发</strong>：<code>report:query</code>、<code>report:query-done</code>、
+              <code>report:export</code>、<code>report:print</code>
+            </li>
+          </ul>
+
+          <h3>信封结构</h3>
+          <pre class="code">{
+  protocol: 'sight-report',
+  name: 'report:loaded',
+  payload: { elapsedMs: 862 },
+  source: { reportId, cellName?, cid? },   // cid 形如 "A2-3-1"，区分展开后第几行
+  timestamp: 1735660800000
+}</pre>
+
+          <h3>单元格事件怎么配</h3>
+          <ol>
+            <li>报表设计器 → 选中单元格 → 链接 → 添加链接 → <strong>发送事件</strong></li>
+            <li>事件名自定义（如 <code>order-selected</code>），不能以 <code>report:</code> 开头</li>
+            <li>参数作为 payload 传出，支持表达式（如 <code>A2</code> 取当前行单元格值）</li>
+          </ol>
+
+          <h3>订阅的副作用（是好事）</h3>
+          <p>发送 <code>subscribe</code> 后，报表侧会锁定本页面 origin 作为后续 postMessage 的 targetOrigin，安全性更高。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 弹窗：外部数据集说明 ───────────────────────── -->
+    <div id="stagedHelpModal" class="modal-backdrop" hidden>
+      <div class="modal">
+        <div class="modal-head">
+          <h2>外部数据集 — 接入说明</h2>
+          <div class="modal-actions"><button data-close-modal class="ghost small">关闭</button></div>
+        </div>
+        <div class="modal-body doc">
+          <h3>使用流程</h3>
+          <ol>
+            <li><strong>上传数据</strong> — 后端调 <code>POST /api/embed/staged-dataset/set</code>，返回 <code>token</code></li>
+            <li><strong>嵌入 / 导出</strong> — parameters 里加 <code>"_dataIds": "&lt;token&gt;"</code></li>
+            <li><strong>清除（可选）</strong> — <code>POST /api/embed/staged-dataset/clear</code></li>
+          </ol>
+
+          <h3>请求与响应</h3>
+          <pre class="code">POST /api/embed/staged-dataset/set
+{
+  "signature": "&lt;签名 token&gt;",
+  "reportId": "rpt_sales",
+  "datasets": { "orders": [ { "orderId": "ORD-001", "price": 99.5 } ] }
+}
+
+→ { "code": 0, "data": { "token": "a1b2c3d4", "datasetNames": ["orders"] } }</pre>
+
+          <h3>注意事项</h3>
+          <ul>
+            <li>签名方式与嵌入报表相同（HMAC-SHA256）</li>
+            <li>一次请求可传多个数据集，共享一个 token；每次 <code>/set</code> 生成新 token，不支持追加</li>
+            <li>数据默认保留 <strong>24 小时</strong>，payload 上限 <strong>5 MB</strong></li>
+            <li>报表设计时需先创建「外部数据集」并定义字段结构</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <script src="./sight-report-embed.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

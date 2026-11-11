@@ -1,0 +1,10 @@
+services:
+  backend-node:
+    build:
+      # 上下文取仓库根，Dockerfile 会同时复制 backend-node 与 frontend-static
+      context: ..
+      dockerfile: backend-node/Dockerfile
+    ports:
+      - '3010:3010'
+    env_file:
+      - .env

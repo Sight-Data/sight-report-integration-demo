@@ -1,0 +1,24 @@
+{
+  "name": "sight-report-integration-demo-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Backend sample for Sight Report third-party integration: HMAC signing, signed embed URLs, staged datasets, export proxy",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Sight-Data/sight-report-integration-demo.git"
+  }
+}
