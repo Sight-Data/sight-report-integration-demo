@@ -20,6 +20,9 @@ SIGHT_REPORT_APP_ID=erp-system
 SIGHT_REPORT_APP_SECRET=replace-with-real-secret
 DEMO_DEFAULT_EXPIRE_MINUTES=10
 DEMO_MAX_EXPIRE_MINUTES=60
+# 可选 / optional
+DEMO_UPSTREAM_TIMEOUT_MS=15000   # 调用报表系统的超时，超时返回 504
+DEMO_JSON_BODY_LIMIT=10mb        # JSON 请求体上限，暂存数据集较大时调高
 ```
 
 旧交付包里的 `MAGIC_REPORT_*` 前缀仍然兼容，但新配置请统一用 `SIGHT_REPORT_*`。
@@ -30,6 +33,7 @@ DEMO_MAX_EXPIRE_MINUTES=60
 ```bash
 npm install
 npm start          # 或 npm run dev（node --watch 热重载）
+npm test           # 签名固定向量 + 上游异常处理，零依赖（node:test）
 ```
 
 打开 <http://localhost:3010/demo/>。
@@ -49,6 +53,7 @@ docker compose up --build
 | `src/signature-service.js` | **签名算法**：`HMAC-SHA256` + Base64Url，可直接照搬 |
 | `src/report-url-service.js` | 拼签名 URL，处理 `parameters` 序列化与空值省略 |
 | `src/staged-dataset-service.js` | 外部数据集 `set` / `clear` |
+| `src/upstream.js` | 调用报表系统的公共封装：超时、网络错误 / 非 JSON 响应转成 502 / 504 |
 | `src/config.js` | 环境变量读取与校验 |
 | `src/index.js` | demo 用的 HTTP 接口、上游可达性探测、静态托管、错误处理 |
 
@@ -150,4 +155,6 @@ docker compose up --build
 - `SIGHT_REPORT_APP_SECRET` 只在本进程内使用，任何响应都不会带上它
 - 样例故意开了 CORS（`Access-Control-Allow-Origin: *`），方便前端从别的本地端口调；生产要收紧
 - `requests.http` 可在 VS Code REST Client 里直接跑，用于快速手工验证
-- 错误响应统一是 `{ "message": "..." }`；参数问题返回 400，上游问题返回 5xx
+- 错误响应统一是 `{ "message": "..." }`；参数问题返回 400，请求体超过 `DEMO_JSON_BODY_LIMIT` 返回 413，
+  上游不可达或拒绝返回 502，上游超时返回 504
+- `test/signature-service.test.js` 里有一组固定签名向量，用其它语言实现签名时可以拿来对齐

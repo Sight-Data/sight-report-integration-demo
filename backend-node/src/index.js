@@ -1,4 +1,6 @@
 const path = require('path')
+const { Readable } = require('stream')
+const { pipeline } = require('stream/promises')
 const express = require('express')
 
 let config
@@ -11,6 +13,7 @@ try {
 
 const { createSignedUrl } = require('./report-url-service')
 const { setStagedDatasets, clearStagedDatasets } = require('./staged-dataset-service')
+const { fetchUpstream } = require('./upstream')
 
 const app = express()
 const frontendStaticDir = path.resolve(__dirname, '../../frontend-static')
@@ -28,7 +31,7 @@ app.use((request, response, next) => {
   next()
 })
 
-app.use(express.json())
+app.use(express.json({ limit: config.jsonBodyLimit }))
 app.use('/demo', express.static(frontendStaticDir))
 
 function parseExpireMinutes(value) {
@@ -117,7 +120,7 @@ function buildEmbedResponse(body) {
 }
 
 async function proxyJson(url) {
-  const response = await fetch(url)
+  const response = await fetchUpstream(url, {}, config.upstreamTimeoutMs)
   const contentType = response.headers.get('content-type') || 'application/json'
   const responseBody = await response.text()
 
@@ -129,10 +132,9 @@ async function proxyJson(url) {
   }
 }
 
+/** 流式转发导出文件，不把整个文件读进内存 / Stream the exported file instead of buffering it */
 async function proxyBinary(url, response) {
-  const upstreamResponse = await fetch(url)
-  const arrayBuffer = await upstreamResponse.arrayBuffer()
-  const buffer = Buffer.from(arrayBuffer)
+  const upstreamResponse = await fetchUpstream(url, {}, config.upstreamTimeoutMs)
 
   response.status(upstreamResponse.status)
   const contentType = upstreamResponse.headers.get('content-type')
@@ -144,8 +146,22 @@ async function proxyBinary(url, response) {
   if (disposition) {
     response.setHeader('content-disposition', disposition)
   }
+  const contentLength = upstreamResponse.headers.get('content-length')
+  if (contentLength) {
+    response.setHeader('content-length', contentLength)
+  }
 
-  response.send(buffer)
+  if (!upstreamResponse.body) {
+    response.end()
+    return
+  }
+
+  try {
+    await pipeline(Readable.fromWeb(upstreamResponse.body), response)
+  } catch (error) {
+    // 浏览器中途取消下载不算错误 / The browser cancelling the download is not an error
+    if (error.code !== 'ERR_STREAM_PREMATURE_CLOSE') throw error
+  }
 }
 
 /**
@@ -253,7 +269,7 @@ app.get('/api/demo/export/:format', async (request, response, next) => {
     const format = requireString(request.params.format, 'format')
     const supportedFormats = new Set(['pdf', 'excel', 'word', 'csv'])
     if (!supportedFormats.has(format)) {
-      throw new Error(`Unsupported export format: ${format}`)
+      throw badRequest(`Unsupported export format: ${format}`)
     }
 
     const context = getSignedRequestContext({ ...request.query, reportId }, reportId)
@@ -287,7 +303,7 @@ app.post('/api/demo/staged-dataset/set', async (request, response, next) => {
     const context = getSignedRequestContext(request.body, request.body.reportId || '')
     const datasets = request.body.datasets
     if (!datasets || typeof datasets !== 'object' || Object.keys(datasets).length === 0) {
-      throw new Error('datasets is required and must be a non-empty object')
+      throw badRequest('datasets is required and must be a non-empty object')
     }
 
     const data = await setStagedDatasets({
@@ -298,7 +314,8 @@ app.post('/api/demo/staged-dataset/set', async (request, response, next) => {
       userName: context.userName,
       reportId: request.body.reportId || '',
       expireAt: context.expireAt,
-      datasets
+      datasets,
+      timeoutMs: config.upstreamTimeoutMs
     })
 
     response.json(data)
@@ -319,7 +336,8 @@ app.post('/api/demo/staged-dataset/clear', async (request, response, next) => {
       account: context.account,
       userName: context.userName,
       expireAt: context.expireAt,
-      token
+      token,
+      timeoutMs: config.upstreamTimeoutMs
     })
 
     response.json({ success: true })
@@ -348,10 +366,15 @@ app.post('/api/demo/staged-dataset/embed-url', (request, response, next) => {
   }
 })
 
+// 参数问题用 badRequest() 抛 400；上游问题由 upstream.js 抛 502 / 504；
+// express.json() 的错误（如 413 请求体过大、400 JSON 格式错误）自带 status
 app.use((error, _request, response, _next) => {
-  const status =
-    error.statusCode || (error.message && error.message.includes('required') ? 400 : 500)
+  const status = error.statusCode || error.status || 500
   if (status >= 500) console.error('[demo-backend]', error)
+  if (response.headersSent) {
+    response.destroy(error)
+    return
+  }
   response.status(status).json({
     message: error.message || 'Unexpected error'
   })
