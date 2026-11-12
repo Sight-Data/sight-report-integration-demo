@@ -372,7 +372,7 @@ With an existing iframe element use `SightReportEmbed.connect(iframeEl)`.
 | `setParameters(params, { query })` | merges parameters; re-queries unless `query === false` |
 | `query()` / `reset()` | re-run query / reset parameters |
 | `export(format)` / `print(command)` | resolve on accept; completion arrives as an event |
-| `getExportFile(format, { maxBytes, timeoutMs })` | resolves with `{ blob, fileName, contentType, size, format }` once the file is in hand — the same file the toolbar export produces. See "Getting the file content" below |
+| `getExportFile(format, { maxBytes, timeoutMs, pages })` | resolves with `{ blob, fileName, contentType, size, format }` once the file is in hand — the same file the toolbar export produces. See "Getting the file content" below |
 | `getParameters(names?, { raw })` | read parameters. Omit `names` for all; keys that don't exist are absent from the result. `raw` only differs on dashboards (the default is the **effective** value, including expanded date ranges and cross-filters) |
 | `getState()` | check `fileType` first: grid / document return parameters, variables, paging, sheet and zoom (`zoom` = setting, `scale` = actual factor); dashboard returns the active tab, cross-filter and last-updated time |
 | `setZoom(zoom)` | display zoom: `'fitWidth'` or a percentage (`75` / `'75%'`); same state as the toolbar zoom dropdown, works even when the toolbar is hidden — **grid / document** |
@@ -438,6 +438,21 @@ GET {baseUrl}/api/embed/report/tag-list?_s={signature}&tag=monthly
 - `fileType`: `grid` / `document` / `datawall` / `mobile`
 - Leave `reportId` **empty** in the signature to get everything the application may access
 - With an application report allowlist configured, both endpoints are filtered automatically
+
+#### Selected pages (reprint a few pages)
+
+```js
+await report.print({ pages: '1,5,8' })                          // print pages 1, 5 and 8 only (printer / copies still apply)
+const part = await report.getExportFile('pdf', { pages: '1-3,8' }) // PDF of just those pages
+```
+
+- Accepts `'1,5,8'`, `'1-3,8'` or an array `[1, 5, 8]`; pages are 1-based as shown in the report, merged in ascending order without duplicates.
+- Headers, footers, watermarks and page numbers ("page 5 of 20") keep the original page numbers.
+- PDF only: `getExportFile` takes `pdf` / `pdfCurrentSheet`; `print` can't be combined with a `*Current` command.
+- A page past the last one rejects with `invalid-argument: …` rather than printing a different page; continuous-feed documents reject with `unsupported:`.
+- `report:print` / `report:print-done` echo `selectedPages`.
+- Server side without opening the page: `/api/embed/export/pdf?…&pages=1%2C5%2C8`.
+- Needs a platform version with selected-page support; older versions ignore `pages` and print / return every page.
 
 ### Scenario 5: server-side export
 

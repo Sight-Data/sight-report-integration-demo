@@ -355,8 +355,8 @@ await report.reload()                         // 重新取签名 URL 并重载
 | --- | --- |
 | `setParameters(params, { query })` | 合并参数；`query !== false` 时立即出数并等完成 |
 | `query()` / `reset()` | 重新查询 / 重置参数 |
-| `export(format)` / `print(command)` | 受理即回，完成看对应事件 |
-| `getExportFile(format, { maxBytes, timeoutMs })` | 拿到文件才 resolve，回 `{ blob, fileName, contentType, size, format }`；与工具栏导出同一份文件。见下方「取文件内容」 |
+| `export(format)` / `print(command \| { printer, copies, command, pages })` | 受理即回，完成看对应事件；`pages` 只打指定页，见下方「指定页」 |
+| `getExportFile(format, { maxBytes, timeoutMs, pages })` | 拿到文件才 resolve，回 `{ blob, fileName, contentType, size, format }`；与工具栏导出同一份文件。见下方「取文件内容」 |
 | `getParameters(names?, { raw })` | 读参数。`names` 省略＝全给，挑不到的键不出现在结果里；`raw` 只对仪表盘有区别（缺省是含日期展开与联动叠加的**生效值**） |
 | `getState()` | 先看 `fileType`：grid / document 回参数、变量、页码、sheet、显示比例（`zoom` 设定值、`scale` 实际缩放比）；dashboard 回页签、联动、数据更新时间 |
 | `setZoom(zoom)` | 显示比例：`'fitWidth'` 或百分比（`75` / `'75%'`），与工具栏「显示比例」下拉同一状态，工具栏隐藏时也能调 —— **grid / document** |
@@ -404,6 +404,21 @@ await fetch('/my-backend/remote-print', { method: 'POST', body: file.blob })
 `session-expired:`（会话过期且自动续期失败，`reload()` 后重试）/ `export-failed:` / `invalid format:` / `not-ready`。
 
 > 需要报表系统版本包含 `getExportFile`（旧版本回 `unknown method: getExportFile`）。
+
+#### 指定页（重打 / 补打其中几页）
+
+```js
+await report.print({ pages: '1,5,8' })                          // 只打第 1、5、8 页（可再加 printer / copies）
+const part = await report.getExportFile('pdf', { pages: '1-3,8' }) // 只取这几页的 PDF
+```
+
+- 写法：`'1,5,8'`、`'1-3,8'` 或数组 `[1, 5, 8]`；页码 1 起，与报表页面上显示的一致；按升序去重合成一份。
+- 每页的页眉页脚、水印、页码（「第 5 页 / 共 20 页」）都按原页码出。
+- 只支持 PDF：`getExportFile` 的格式只能是 `pdf` / `pdfCurrentSheet`；`print` 不能配 `*Current` 命令。
+- 页码超过总页数回 `invalid-argument: 页码超出范围…`，不会改打别的页；连续纸单据回 `unsupported:`。
+- `report:print` / `report:print-done` 回带 `selectedPages`。
+- 后端不打开页面直接取：`/api/embed/export/pdf?…&pages=1%2C5%2C8`。
+- 需要报表系统版本包含「指定页」功能；旧版本会忽略 `pages`，打 / 取全部页。
 
 ### 场景四：获取报表列表
 

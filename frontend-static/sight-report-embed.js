@@ -14,6 +14,8 @@
  *   await report.setParameters({ year: 2025 })
  *   const state = await report.getState()
  *   const file = await report.getExportFile('pdf')   // { blob, fileName, size }：发远程打印 / 归档
+ *   await report.print({ pages: '1,5,8' })                     // 只打第 1、5、8 页
+ *   const part = await report.getExportFile('pdf', { pages: '1-3,8' })
  *
  * 工具栏：embedUrl 上加 toolbarItems=-print,-license 逐个隐藏 / 显示内置按钮，
  * toolbarButtons=SightReportEmbed.encodeToolbarButtons([...]) 加宿主自己的按钮，点击收 report:toolbar-click：
@@ -289,7 +291,10 @@
   SightReportInstance.prototype.getExportFile = function (format, options) {
     options = options || {}
     var timeoutMs = options.timeoutMs > 0 ? options.timeoutMs : EXPORT_FILE_TIMEOUT
-    var args = [format || 'pdf', { maxBytes: options.maxBytes, timeoutMs: timeoutMs }]
+    var opts = { maxBytes: options.maxBytes, timeoutMs: timeoutMs }
+    // 只取指定页（仅 PDF）：'1,5,8' / '1-3,8' / [1, 5, 8]
+    if (options.pages != null) opts.pages = options.pages
+    var args = [format || 'pdf', opts]
     return this._invoke('getExportFile', args, timeoutMs + EXPORT_FILE_TIMEOUT_GRACE)
   }
 

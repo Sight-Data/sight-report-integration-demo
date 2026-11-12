@@ -75,6 +75,23 @@ export interface GetExportFileOptions {
   maxBytes?: number
   /** 默认 120000。到点报表侧中断请求并 reject `timeout:` */
   timeoutMs?: number
+  /**
+   * 只取指定页（仅 PDF，format 为 pdf / pdfCurrentSheet）：'1,5,8' / '1-3,8' / [1, 5, 8]。
+   * 页码 1 起、升序去重合成一份；超出总页数 reject `invalid-argument: 页码超出范围…`
+   */
+  pages?: string | number[]
+}
+
+/** print 的选项（命令名字符串的旧用法照旧可用） */
+export interface PrintOptions {
+  /** 打印机（本机打印服务里的系统名或显示名）；传了缺省走插件静默打印 */
+  printer?: string
+  /** 份数 1–999 */
+  copies?: number
+  /** previewPrintAll / directPrintAll / previewPrintCurrent / directPrintCurrent；配 pages 时只能是 *All */
+  command?: string
+  /** 只打指定页：'1,5,8' / '1-3,8' / [1, 5, 8] */
+  pages?: string | number[]
 }
 
 /** 与工具栏导出菜单同一套命令名 */
@@ -151,7 +168,7 @@ export interface SightReportInstance {
    * session-expired: / export-failed: / invalid format: / not-ready
    */
   getExportFile(format?: ExportCommand | string, options?: GetExportFileOptions): Promise<ExportFile>
-  print(command?: string): Promise<{ accepted: boolean }>
+  print(command?: string | PrintOptions): Promise<{ accepted: boolean; jobId: string }>
   getState(): Promise<ReportState>
   setSheet(sheetId: string): Promise<{ activeSheetId: string }>
   /** 取单元格渲染后显示值（首个匹配；**仅 grid**，单据与仪表盘回 unsupported） */
