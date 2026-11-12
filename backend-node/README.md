@@ -97,9 +97,13 @@ docker compose up --build
   "showQueryForm": false,
   "viewMode": "all",
   "zoom": "fitWidth",
+  "toolbarItems": "-license,-timing",
+  "toolbarButtons": [{ "id": "approve", "text": "提交审批", "type": "primary" }],
   "expireMinutes": 10
 }
 ```
+
+`toolbarItems` 可选：逐个工具栏按钮，`-id` 隐藏 / `+id` 显示，认不出的 ID 会被丢掉。`toolbarButtons` 可选：宿主自定义按钮，后端编码成 base64url JSON 拼到 URL 上，点击时报表发 `report:toolbar-click`。
 
 `zoom` 可选：`fitWidth`（适应宽度，整体缩放铺满 iframe 宽度）或 10~300 的百分比（如 `75`）；不传则按查看人上次在工具栏选的比例、再按报表设置。
 

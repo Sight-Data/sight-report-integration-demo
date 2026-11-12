@@ -14,6 +14,7 @@ try {
 const { createSignedUrl } = require('./report-url-service')
 const { setStagedDatasets, clearStagedDatasets } = require('./staged-dataset-service')
 const { fetchUpstream } = require('./upstream')
+const { normalizeToolbarItems, encodeToolbarButtons } = require('./toolbar-options')
 
 const app = express()
 const frontendStaticDir = path.resolve(__dirname, '../../frontend-static')
@@ -108,7 +109,9 @@ function buildEmbedResponse(body) {
       hideToolbar: body.hideToolbar,
       showQueryForm: body.showQueryForm,
       viewMode: normalizeViewMode(body.viewMode),
-      zoom: normalizeZoom(body.zoom)
+      zoom: normalizeZoom(body.zoom),
+      toolbarItems: normalizeToolbarItems(body.toolbarItems),
+      toolbarButtons: encodeToolbarButtons(body.toolbarButtons)
     }
   })
 

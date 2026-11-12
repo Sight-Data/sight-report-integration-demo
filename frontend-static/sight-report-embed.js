@@ -14,6 +14,11 @@
  *   await report.setParameters({ year: 2025 })
  *   const state = await report.getState()
  *   const file = await report.getExportFile('pdf')   // { blob, fileName, size }：发远程打印 / 归档
+ *
+ * 工具栏：embedUrl 上加 toolbarItems=-print,-license 逐个隐藏 / 显示内置按钮，
+ * toolbarButtons=SightReportEmbed.encodeToolbarButtons([...]) 加宿主自己的按钮，点击收 report:toolbar-click：
+ *   report.on('report:toolbar-click', (e) => console.log(e.payload.id, e.payload.parameters))
+ *   await report.setToolbarButtons([{ id: 'approve', text: '已提交', disabled: true }])
  */
 ;(function (global, factory) {
   if (typeof module === 'object' && typeof module.exports === 'object') {
@@ -258,6 +263,9 @@
     'setZoom',
     'setTab',
     'getTabs',
+    // 工具栏（grid / document；仪表盘回 unsupported）
+    'setToolbarItems',
+    'setToolbarButtons',
   ]
   METHODS.forEach(function (method) {
     SightReportInstance.prototype[method] = function () {
@@ -378,5 +386,16 @@
     return instance
   }
 
-  return { mount: mount, connect: connect, PROTOCOL: PROTOCOL }
+  /**
+   * 把宿主自定义按钮编码成 URL 参数 toolbarButtons 的值（JSON → UTF-8 → base64url）。
+   * 第三方后端拼 embedUrl 时用同一算法（Node：Buffer.from(json).toString('base64url')）。
+   */
+  function encodeToolbarButtons(buttons) {
+    var bytes = new TextEncoder().encode(JSON.stringify(buttons || []))
+    var binary = ''
+    for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+  }
+
+  return { mount: mount, connect: connect, encodeToolbarButtons: encodeToolbarButtons, PROTOCOL: PROTOCOL }
 })

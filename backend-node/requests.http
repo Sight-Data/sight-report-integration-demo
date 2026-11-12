@@ -29,6 +29,8 @@ Content-Type: application/json
   "showQueryForm": true,
   "viewMode": "all",
   "zoom": "fitWidth",
+  "toolbarItems": "-license,-timing",
+  "toolbarButtons": [{ "id": "approve", "text": "提交审批", "type": "primary" }],
   "expireMinutes": {{expireMinutes}}
 }
 

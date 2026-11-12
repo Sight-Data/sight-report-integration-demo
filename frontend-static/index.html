@@ -151,6 +151,10 @@
                   </select>
                 </label>
                 <label class="field">
+                  <span>toolbarItems（逐个按钮：-隐藏 / +显示）</span>
+                  <input id="toolbarItems" type="text" placeholder="如 -license,-timing,-query" />
+                </label>
+                <label class="field">
                   <span>reportId</span>
                   <input id="embedReportMirror" type="text" readonly />
                 </label>
@@ -158,6 +162,9 @@
               <div class="chip-row">
                 <label class="chip"><input id="hideToolbar" type="checkbox" /><span>隐藏工具栏</span></label>
                 <label class="chip"><input id="showQueryForm" type="checkbox" checked /><span>显示查询栏</span></label>
+                <label class="chip" title="toolbarButtons：在工具栏加「提交审批」「帮助」两个宿主按钮，点击在事件面板看 report:toolbar-click"
+                  ><input id="demoToolbarButtons" type="checkbox" /><span>加示例自定义按钮</span></label
+                >
                 <label class="chip"><input id="autoSubscribe" type="checkbox" checked /><span>打开后自动订阅事件</span></label>
               </div>
               <div class="row-actions">

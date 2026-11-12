@@ -85,6 +85,35 @@ export type ExportCommand =
   | 'csv' | 'csvCurrent'
   | 'ofd' | 'ofdCurrent'
 
+/** 工具栏内置按钮标识（URL 参数 toolbarItems / setToolbarItems 用） */
+export type ToolbarItemId =
+  | 'print'
+  | 'continuePrint'
+  | 'export'
+  | 'viewMode'
+  | 'zoom'
+  | 'query'
+  | 'resetColumnWidths'
+  | 'columns'
+  | 'pagination'
+  | 'caliber'
+  | 'timing'
+  | 'license'
+  | 'sheetTabs'
+
+/** 宿主自定义工具栏按钮（URL 参数 toolbarButtons / setToolbarButtons 用）；点击发 report:toolbar-click {id, parameters} */
+export interface ToolbarButton {
+  /** 宿主自己的按钮标识（≤ 64 字符），点击事件里原样带回 */
+  id: string
+  /** 按钮文字（纯文本，≤ 20 字） */
+  text: string
+  title?: string
+  /** left（默认，左侧功能区末尾）/ right（右侧信息区开头） */
+  position?: 'left' | 'right'
+  type?: 'default' | 'primary'
+  disabled?: boolean
+}
+
 export interface MountOptions {
   /** 后端生成的签名嵌入地址（与 getEmbedUrl 二选一） */
   embedUrl?: string
@@ -133,6 +162,13 @@ export interface SightReportInstance {
    * 工具栏隐藏时也可调；只影响屏幕显示。大屏与仪表盘回 unsupported，取值认不出回 invalid zoom。
    */
   setZoom(zoom: ViewZoom | string): Promise<{ zoom: ViewZoom }>
+  /**
+   * 运行中逐个改工具栏内置按钮显隐：'-print,+query' 或 { print: false }，与之前设的合并，优先于 URL 参数 toolbarItems；
+   * null 清掉。返回每个按钮是否允许出现（打印权限等前提仍要满足）。仪表盘回 unsupported。
+   */
+  setToolbarItems(items: string | Partial<Record<ToolbarItemId, boolean>> | null): Promise<Record<ToolbarItemId, boolean>>
+  /** 整组替换宿主自定义按钮（[] 清空，null 回到 URL 给的那组）；返回校验后的按钮。仪表盘回 unsupported */
+  setToolbarButtons(buttons: ToolbarButton[] | null): Promise<ToolbarButton[]>
   /** 仪表盘页签（相当于 grid 的 setSheet）；其他类型回 unsupported */
   getTabs(): Promise<Array<{ id: string; name: string }>>
   setTab(tabId: string): Promise<{ activeTabId: string }>
@@ -146,4 +182,6 @@ export interface SightReportInstance {
 
 export function mount(container: string | HTMLElement, options: MountOptions): SightReportInstance
 export function connect(iframeEl: HTMLIFrameElement, options?: MountOptions): SightReportInstance
+/** 编码 URL 参数 toolbarButtons（JSON → UTF-8 → base64url） */
+export function encodeToolbarButtons(buttons: ToolbarButton[]): string
 export const PROTOCOL: 'sight-report'

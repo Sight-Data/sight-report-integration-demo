@@ -55,6 +55,8 @@
     embedReportMirror: $('embedReportMirror'),
     hideToolbar: $('hideToolbar'),
     showQueryForm: $('showQueryForm'),
+    toolbarItems: $('toolbarItems'),
+    demoToolbarButtons: $('demoToolbarButtons'),
     autoSubscribe: $('autoSubscribe'),
     openEmbedBtn: $('openEmbedBtn'),
     reloadEmbedBtn: $('reloadEmbedBtn'),
@@ -142,6 +144,7 @@
     'reportId',
     'viewMode',
     'zoom',
+    'toolbarItems',
     'exportFileName',
     'exportPageIndex',
     'tag',
@@ -153,6 +156,7 @@
   const FLAG_FIELDS = [
     'hideToolbar',
     'showQueryForm',
+    'demoToolbarButtons',
     'autoSubscribe',
     'subQuery',
     'subQueryDone',
@@ -546,6 +550,17 @@
       '    viewMode: ' + JSON.stringify(el.viewMode.value) + (el.zoom.value ? ',' : ''),
       ...(el.zoom.value ? ['    zoom: ' + JSON.stringify(el.zoom.value) + '   // 显示比例：fitWidth 或百分比'] : []),
       '  })',
+      ...(el.toolbarItems.value.trim()
+        ? ["  query.set('toolbarItems', " + JSON.stringify(el.toolbarItems.value.trim()) + ')   // 逐个按钮：-隐藏 / +显示']
+        : []),
+      ...(el.demoToolbarButtons.checked
+        ? [
+            '  // 宿主自定义按钮：JSON → UTF-8 → base64url；点击时报表发 report:toolbar-click { id, parameters }',
+            "  query.set('toolbarButtons', Buffer.from(JSON.stringify(" +
+              JSON.stringify(DEMO_TOOLBAR_BUTTONS) +
+              "), 'utf8').toString('base64url'))"
+          ]
+        : []),
       '  res.send(' + JSON.stringify(c.baseUrl + '/embed.html?') + ' + query.toString())',
       '})',
       '',
@@ -730,7 +745,8 @@
         hideToolbar: el.hideToolbar.checked,
         showQueryForm: el.showQueryForm.checked,
         viewMode: el.viewMode.value,
-        zoom: el.zoom.value
+        zoom: el.zoom.value,
+        ...toolbarOptions()
       })
     })
 
@@ -739,6 +755,20 @@
     if (el.autoSubscribe.checked) {
       // iframe 加载完成后再订阅，否则报表侧还没挂上监听
       el.reportFrame.addEventListener('load', subscribeSelectedOnce, { once: true })
+    }
+  }
+
+  /** 「加示例自定义按钮」打开时加到工具栏上的两个宿主按钮 */
+  const DEMO_TOOLBAR_BUTTONS = [
+    { id: 'approve', text: '提交审批', type: 'primary', title: '宿主自己的按钮：点击后报表发 report:toolbar-click' },
+    { id: 'help', text: '帮助', position: 'right' }
+  ]
+
+  function toolbarOptions() {
+    const items = el.toolbarItems.value.trim()
+    return {
+      ...(items ? { toolbarItems: items } : {}),
+      ...(el.demoToolbarButtons.checked ? { toolbarButtons: DEMO_TOOLBAR_BUTTONS } : {})
     }
   }
 
@@ -760,6 +790,10 @@
     if (data.name === 'report:loaded') {
       const elapsed = data.payload && data.payload.elapsedMs
       setViewerState('ready', elapsed ? `已就绪 · ${elapsed}ms` : '已就绪')
+    }
+    if (data.name === 'report:toolbar-click') {
+      const payload = data.payload || {}
+      toast(`宿主按钮被点击：${payload.id}（参数见事件面板）`)
     }
     if (data.name === 'report:error') {
       setViewerState('error', '出错')
@@ -1036,7 +1070,8 @@
         hideToolbar: el.hideToolbar.checked,
         showQueryForm: el.showQueryForm.checked,
         viewMode: el.viewMode.value,
-        zoom: el.zoom.value
+        zoom: el.zoom.value,
+        ...toolbarOptions()
       })
     })
     applyEmbedUrl(data.embedUrl)

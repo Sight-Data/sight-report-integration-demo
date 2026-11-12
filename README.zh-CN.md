@@ -237,9 +237,13 @@ GET {baseUrl}/embed.html?reportId={reportId}&_s={signature}
 | `_s` | 签名参数 |
 | `parameters` | 报表查询参数，JSON 序列化后再 URL 编码，如 `{"year":2024,"month":1}` |
 | `hideToolbar` | `true` 隐藏工具栏（打印 / 导出 / 分页） |
+| `toolbarItems` | 逐个控制工具栏按钮：逗号分隔，`-按钮` 隐藏、`+按钮` 显示，没写到的按报表设置、再按系统设置（网格报表与单据各一张隐藏清单）。如 `-license,-timing,-query`。按钮：`print` `continuePrint` `export` `viewMode` `zoom` `query` `resetColumnWidths` `columns` `pagination` `caliber` `timing` `license` `sheetTabs`。只决定「允许出现」，打印权限等前提仍要满足；仪表盘不受影响 |
+| `toolbarButtons` | 宿主自己的工具栏按钮：JSON 数组 `[{ id, text, title?, position?: 'left'\|'right', type?: 'default'\|'primary', disabled? }]` 先 UTF-8 再 base64url（Node：`Buffer.from(json).toString('base64url')`；浏览器：`SightReportEmbed.encodeToolbarButtons(buttons)`）。点击时报表发 `report:toolbar-click`（直接发送，不用订阅），payload `{ id, parameters }` |
 | `showQueryForm` | `false` 隐藏查询表单 |
 | `viewMode` | `pagination`（分页，默认）/ `all`（全部数据） |
 | `zoom` | 显示比例：`fitWidth`（适应宽度，网格 / 单据整体等比缩放到正好铺满 iframe 宽度，iframe 尺寸变化时自动重算）或 10~300 的百分比（如 `75`）。不传则按查看人上次在工具栏选的比例（记在其浏览器）、再按报表设置「默认显示比例」。只影响屏幕显示，不影响打印与导出；与 `hideToolbar` 互不影响。旧写法 `fitWidth=true` / `false` 等同 `zoom=fitWidth` / `zoom=100` |
+
+> 宿主自己做了查询按钮时，用 `toolbarItems=-query` 藏掉报表的「查询」，按钮里调 `report.query()`；打开后还能用 `report.setToolbarItems('-print')` / `report.setToolbarButtons([...])` 再改。这几项需要平台版本带有「工具栏按钮显隐」功能，旧版本会忽略 URL 参数，方法返回 `unknown method`。
 
 > `zoom` 与 `setZoom` 需要平台版本带有「显示比例」功能；旧版本会忽略 `zoom` 参数，`setZoom` 返回 `unknown method`。
 
