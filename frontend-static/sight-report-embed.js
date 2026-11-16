@@ -224,6 +224,51 @@
     return this
   }
 
+  /**
+   * 监听报表状态变化（页码 / 总页数 / loading / sheet / 缩放等）。
+   * 报表侧目前没有「页码变化」推送事件，故 SDK 轮询 getState，字段有变化才回调。
+   * handler(state, prevState)；返回取消函数。options.intervalMs 默认 500；options.immediate 默认 true（先回调一次当前状态）。
+   */
+  SightReportInstance.prototype.onStateChange = function (handler, options) {
+    var self = this
+    var opts = options || {}
+    var intervalMs = opts.intervalMs || 500
+    var prev = null
+    var prevKey = null
+    var busy = false
+    var stopped = false
+    function tick() {
+      if (stopped || self._destroyed || busy) return
+      busy = true
+      self.invoke('getState').then(
+        function (state) {
+          busy = false
+          if (stopped || !state) return
+          var key = JSON.stringify(state)
+          if (key === prevKey) return
+          var old = prev
+          prev = state
+          prevKey = key
+          if (old === null && opts.immediate === false) return
+          try {
+            handler(state, old)
+          } catch (err) {
+            console.error('[sight-report-embed] 状态处理器异常:', err)
+          }
+        },
+        function () {
+          busy = false // 未就绪或超时，下个周期再试
+        }
+      )
+    }
+    var timer = setInterval(tick, intervalMs)
+    tick()
+    return function () {
+      stopped = true
+      clearInterval(timer)
+    }
+  }
+
   /** 泛化方法调用：协议新增方法时旧 SDK 无需升级 */
   SightReportInstance.prototype.invoke = function (method) {
     return this._invoke(method, Array.prototype.slice.call(arguments, 1), this._timeoutMs)

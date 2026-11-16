@@ -170,6 +170,14 @@ export interface SightReportInstance {
   getExportFile(format?: ExportCommand | string, options?: GetExportFileOptions): Promise<ExportFile>
   print(command?: string | PrintOptions): Promise<{ accepted: boolean; jobId: string }>
   getState(): Promise<ReportState>
+  /**
+   * 监听状态变化（页码、总页数、loading、sheet、缩放等）。报表侧无推送事件，SDK 轮询 getState，有变化才回调。
+   * 返回取消函数。options.intervalMs 默认 500；options.immediate 默认 true（先回调一次当前状态）。
+   */
+  onStateChange(
+    handler: (state: ReportState, prev: ReportState | null) => void,
+    options?: { intervalMs?: number; immediate?: boolean }
+  ): () => void
   setSheet(sheetId: string): Promise<{ activeSheetId: string }>
   /** 取单元格渲染后显示值（首个匹配；**仅 grid**，单据与仪表盘回 unsupported） */
   getCellValue(cellName: string): Promise<CellValue>
