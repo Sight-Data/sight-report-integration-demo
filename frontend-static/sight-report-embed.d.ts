@@ -57,6 +57,14 @@ export interface CellValue {
   text: string
 }
 
+/** report:query-done 的 payload：每次查询渲染完成（含首次）发出 */
+export interface QueryDonePayload {
+  parameters: Record<string, unknown>
+  elapsedMs: number
+  /** 本次渲染后的总页数；仅 grid / document，仪表盘与大屏不带。旧版报表系统不带此字段 */
+  totalPages?: number
+}
+
 /** getExportFile 的结果 */
 export interface ExportFile {
   /** 文件内容；经 postMessage 传过来只传引用、不复制字节 */

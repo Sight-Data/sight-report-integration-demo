@@ -271,7 +271,7 @@ document.getElementById('reportFrame').src = embedUrl
 | 零配置直发 | `report:error` | `{ phase: 'load'\|'query'\|'export', message }` |
 | 零配置直发 | 自定义单元格事件 | 设计器「发送事件」链接配置的参数，按点击行求值 |
 | 订阅后发 | `report:query` | `{ parameters }`，用户点查询 |
-| 订阅后发 | `report:query-done` | `{ parameters, elapsedMs }`，每次查询渲染完成（含首次） |
+| 订阅后发 | `report:query-done` | `{ parameters, elapsedMs, totalPages? }`，每次查询渲染完成（含首次）；`totalPages` 为本次渲染后的总页数（仅 grid / document） |
 | 订阅后发 | `report:export` | `{ format }`—导出**发起时**发，没有完成事件 |
 | 订阅后发 | `report:print` | `{ command }` |
 | 订阅后发 | `report:resize` | 报表尺寸变化（宿主按需调整 iframe 高度） |
@@ -339,7 +339,7 @@ const report = SightReportEmbed.mount('#reportBox', {
 })
 
 await report.ready()                          // loaded 事件 + getState 轮询兜底
-report.on('report:query-done', (e) => console.log(e.payload.elapsedMs))
+report.on('report:query-done', (e) => console.log(e.payload.elapsedMs, e.payload.totalPages))
 await report.setParameters({ year: 2025 })    // 合并参数并重新出数（等完成）
 const state = await report.getState()         // 先看 state.fileType，再决定用哪些方法
 const p = await report.getParameters(['year']) // 读当前生效参数（不传 names ＝全给）

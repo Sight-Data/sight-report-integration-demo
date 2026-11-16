@@ -608,7 +608,7 @@
       '// 已有 iframe 元素时：SightReportEmbed.connect(iframeEl)',
       '',
       'await report.ready()                       // loaded 事件 + getState 轮询兜底',
-      "report.on('report:query-done', (e) => console.log(e.payload.elapsedMs))",
+      "report.on('report:query-done', (e) => console.log(e.payload.elapsedMs, e.payload.totalPages))",
       '',
       'await report.setParameters(' + (el.invokeParams.value.trim() || '{}') + ')   // 合并参数并重新出数',
       'const state = await report.getState()      // 参数/变量/页码/加载状态',

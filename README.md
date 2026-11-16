@@ -283,7 +283,7 @@ Two tiers of events:
 | Zero-config | `report:error` | `{ phase: 'load'\|'query'\|'export', message }` |
 | Zero-config | custom cell events | link parameters from the designer, evaluated per clicked row |
 | Subscribed | `report:query` | `{ parameters }` |
-| Subscribed | `report:query-done` | `{ parameters, elapsedMs }` — every render, including the first |
+| Subscribed | `report:query-done` | `{ parameters, elapsedMs, totalPages? }` — every render, including the first; `totalPages` (grid / document only) is the page count of this render |
 | Subscribed | `report:export` | `{ format }` — fired when the export **starts**; there is no completion event |
 | Subscribed | `report:print` | `{ command }` |
 | Subscribed | `report:resize` | report size changed (resize the iframe if you need to) |
@@ -355,7 +355,7 @@ const report = SightReportEmbed.mount('#reportBox', {
 })
 
 await report.ready()                          // loaded event, with a getState poll as fallback
-report.on('report:query-done', (e) => console.log(e.payload.elapsedMs))
+report.on('report:query-done', (e) => console.log(e.payload.elapsedMs, e.payload.totalPages))
 await report.setParameters({ year: 2025 })    // merge parameters and re-query (awaits completion)
 const state = await report.getState()         // check state.fileType first, then pick your methods
 const p = await report.getParameters(['year']) // read parameters in effect (omit names for all)
