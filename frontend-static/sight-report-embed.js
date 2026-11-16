@@ -38,7 +38,7 @@
   /** 报表侧到点会回明确的 timeout: 错误；SDK 多等这么久好收到它，而不是自己先报个笼统的超时 */
   var EXPORT_FILE_TIMEOUT_GRACE = 5000
   /** 需订阅才推送的过程性事件（on 这些事件时 SDK 自动发 subscribe） */
-  var SUBSCRIPTION_EVENTS = ['report:query', 'report:query-done', 'report:export', 'report:print', 'report:resize']
+  var SUBSCRIPTION_EVENTS = ['report:query', 'report:query-done', 'report:view-change', 'report:export', 'report:print', 'report:resize']
 
   var seq = 0
   function nextId() {

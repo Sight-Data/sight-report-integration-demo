@@ -65,6 +65,8 @@
     eventsPrereq: $('eventsPrereq'),
     subQuery: $('subQuery'),
     subQueryDone: $('subQueryDone'),
+    subViewChange: $('subViewChange'),
+    viewerPages: $('viewerPages'),
     subExport: $('subExport'),
     subPrint: $('subPrint'),
     subscribeBtn: $('subscribeBtn'),
@@ -160,6 +162,7 @@
     'autoSubscribe',
     'subQuery',
     'subQueryDone',
+    'subViewChange',
     'subExport',
     'subPrint'
   ]
@@ -291,6 +294,21 @@
   function setViewerState(stateName, text) {
     el.viewerStatus.dataset.state = stateName
     el.viewerStatus.textContent = text
+  }
+
+  /** 页码显示：只更新传入的字段，其余保持 */
+  const viewInfo = { currentPage: null, totalPages: null, activeSheetId: null }
+  function renderViewInfo(patch) {
+    if (patch) {
+      ;['currentPage', 'totalPages', 'activeSheetId'].forEach((key) => {
+        if (patch[key] !== undefined && patch[key] !== null) viewInfo[key] = patch[key]
+      })
+    }
+    const total = viewInfo.totalPages ?? '-'
+    const cur = viewInfo.currentPage
+    let text = cur ? `第 ${cur} / ${total} 页` : `共 ${total} 页`
+    if (viewInfo.activeSheetId) text += ` · ${viewInfo.activeSheetId}`
+    el.viewerPages.textContent = text
   }
 
   function syncSharedMirrors() {
@@ -719,6 +737,8 @@
     el.openNewWindowLink.href = embedUrl
     el.openNewWindowLink.classList.remove('disabled')
     setViewerState('loading', '加载中…')
+    viewInfo.currentPage = viewInfo.totalPages = viewInfo.activeSheetId = null
+    renderViewInfo()
 
     if (state.sdk) {
       try {
@@ -791,6 +811,9 @@
       const elapsed = data.payload && data.payload.elapsedMs
       setViewerState('ready', elapsed ? `已就绪 · ${elapsed}ms` : '已就绪')
     }
+    if (data.name === 'report:query-done' || data.name === 'report:view-change') {
+      renderViewInfo(data.payload || {})
+    }
     if (data.name === 'report:toolbar-click') {
       const payload = data.payload || {}
       toast(`宿主按钮被点击：${payload.id}（参数见事件面板）`)
@@ -806,6 +829,7 @@
     const events = []
     if (el.subQuery.checked) events.push('report:query')
     if (el.subQueryDone.checked) events.push('report:query-done')
+    if (el.subViewChange.checked) events.push('report:view-change')
     if (el.subExport.checked) events.push('report:export')
     if (el.subPrint.checked) events.push('report:print')
     return events

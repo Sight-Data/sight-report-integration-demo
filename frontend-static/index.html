@@ -202,6 +202,7 @@
               <div class="chip-row wrap">
                 <label class="chip"><input id="subQuery" type="checkbox" checked /><span>report:query</span></label>
                 <label class="chip"><input id="subQueryDone" type="checkbox" checked /><span>report:query-done</span></label>
+                <label class="chip"><input id="subViewChange" type="checkbox" checked /><span>report:view-change</span></label>
                 <label class="chip"><input id="subExport" type="checkbox" checked /><span>report:export</span></label>
                 <label class="chip"><input id="subPrint" type="checkbox" checked /><span>report:print</span></label>
               </div>
@@ -403,6 +404,7 @@
               <div class="viewer-title">
                 <h2>报表预览</h2>
                 <span id="viewerStatus" class="state-chip" data-state="idle">未打开</span>
+                <span id="viewerPages" class="state-chip" title="来自 report:query-done / report:view-change">共 - 页</span>
               </div>
               <div class="viewer-actions">
                 <a id="openNewWindowLink" class="link disabled" href="#" target="_blank" rel="noreferrer">新窗口打开</a>
@@ -531,7 +533,8 @@
               <strong>单元格事件</strong>（设计器「发送事件」链接配置）
             </li>
             <li>
-              <strong>订阅后才发</strong>：<code>report:query</code>、<code>report:query-done</code>、
+              <strong>订阅后才发</strong>：<code>report:query</code>、<code>report:query-done</code>（带 <code>totalPages</code>）、
+              <code>report:view-change</code>（当前页 / 总页数 / sheet 变化）、
               <code>report:export</code>、<code>report:print</code>
             </li>
           </ul>

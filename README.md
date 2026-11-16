@@ -284,6 +284,7 @@ Two tiers of events:
 | Zero-config | custom cell events | link parameters from the designer, evaluated per clicked row |
 | Subscribed | `report:query` | `{ parameters }` |
 | Subscribed | `report:query-done` | `{ parameters, elapsedMs, totalPages? }` — every render, including the first; `totalPages` (grid / document only) is the page count of this render |
+| Subscribed | `report:view-change` | `{ currentPage, totalPages, activeSheetId?, changed: ['currentPage'\|'totalPages'\|'activeSheetId'][] }` — fires once when the current page, total pages or sheet changes (grid / document only) |
 | Subscribed | `report:export` | `{ format }` — fired when the export **starts**; there is no completion event |
 | Subscribed | `report:print` | `{ command }` |
 | Subscribed | `report:resize` | report size changed (resize the iframe if you need to) |

@@ -272,6 +272,7 @@ document.getElementById('reportFrame').src = embedUrl
 | 零配置直发 | 自定义单元格事件 | 设计器「发送事件」链接配置的参数，按点击行求值 |
 | 订阅后发 | `report:query` | `{ parameters }`，用户点查询 |
 | 订阅后发 | `report:query-done` | `{ parameters, elapsedMs, totalPages? }`，每次查询渲染完成（含首次）；`totalPages` 为本次渲染后的总页数（仅 grid / document） |
+| 订阅后发 | `report:view-change` | `{ currentPage, totalPages, activeSheetId?, changed: ['currentPage'\|'totalPages'\|'activeSheetId'][] }`，当前页 / 总页数 / sheet 任一变化时发一次（仅 grid / document）；字段是变化后的完整状态，`changed` 列出本次变了什么 |
 | 订阅后发 | `report:export` | `{ format }`—导出**发起时**发，没有完成事件 |
 | 订阅后发 | `report:print` | `{ command }` |
 | 订阅后发 | `report:resize` | 报表尺寸变化（宿主按需调整 iframe 高度） |
