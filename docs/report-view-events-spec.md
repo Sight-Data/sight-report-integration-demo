@@ -2,6 +2,8 @@
 
 面向：报表系统（报表页面 / 嵌入协议）。宿主侧的类型、文档、demo 已按本契约就绪，等报表侧实现。
 
+> 状态：报表侧已实现并合并（qianxl2011/sight-data#11，`report:query-done.totalPages` 与 `report:view-change`）。
+
 ## 1. 背景
 
 第三方宿主集成时需要知道报表总页数，并希望在翻页、切换 sheet 时得到通知。
@@ -80,7 +82,7 @@ payload: {
 | --- | --- |
 | 打开 grid 报表并订阅，等 `query-done` | payload 含 `totalPages`，等于工具栏显示的总页数 |
 | 点击下一页 | 收到 1 条 `view-change`，`changed=['currentPage']` |
-| 改参数查询，结果页数变化 | `query-done.totalPages` 为新值；若当前页因此被截断，另发 `view-change`（`changed` 含 `currentPage`）或在 `query-done` 之后合并说明——以实现为准，需在文档标明 |
+| 改参数查询，结果页数变化 | `query-done.totalPages` 为新值；`view-change` 随后另发（`changed` 含 `totalPages`，当前页被截断时也含 `currentPage`），不与 `query-done` 合并 |
 | 切换 sheet（用户点或 `setSheet`） | 收到 1 条 `view-change`，`changed` 含 `activeSheetId`，页数变化时一并列出 |
 | 翻页后值未变（如已在末页点下一页） | 不发事件 |
 | 仪表盘 / 大屏 | 不发 `view-change`；`query-done` 无 `totalPages` |
@@ -89,7 +91,7 @@ payload: {
 
 ## 6. 待报表侧确认的问题
 
-1. 改参数重新出数后当前页被截断（如原在第 8 页，新结果仅 5 页）：`query-done` 与 `view-change` 的先后与是否合并，请明确。
+1. ~~改参数重新出数后当前页被截断~~（已定）：先发 `query-done`，约 100ms 后再发 `view-change`，不合并。报表侧已按此实现（sight-data#11）。
 2. `document` 类型是否有 sheet 概念；`activeSheetId` 是否省略。
 3. 连续纸单据（连续纸 / 无分页）的 `totalPages` 取值：建议不带字段，并在文档标明。
 4. 上线版本号：宿主需据此判断是否可依赖该事件（旧版需回退到 `getState` 拉取）。
