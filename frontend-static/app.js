@@ -311,6 +311,19 @@
     el.viewerPages.textContent = text
   }
 
+  /** 兜底：事件没带页码（旧版报表系统）时，用 getState 拉一次 */
+  function pullViewInfo() {
+    if (!state.embedUrl || !window.SightReportEmbed) return
+    const instance = sdk()
+    if (!instance) return
+    instance.getState().then(
+      (s) => {
+        if (s && s.totalPages !== undefined) renderViewInfo(s)
+      },
+      () => {}
+    )
+  }
+
   function syncSharedMirrors() {
     el.embedReportMirror.value = el.reportId.value.trim() || '（未选择）'
     const count = collectParameters({ silent: true })
@@ -813,6 +826,12 @@
     }
     if (data.name === 'report:query-done' || data.name === 'report:view-change') {
       renderViewInfo(data.payload || {})
+    }
+    if (
+      data.name === 'report:loaded' ||
+      (data.name === 'report:query-done' && !(data.payload && data.payload.totalPages !== undefined))
+    ) {
+      pullViewInfo()
     }
     if (data.name === 'report:toolbar-click') {
       const payload = data.payload || {}
