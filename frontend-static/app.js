@@ -65,6 +65,8 @@
     eventsPrereq: $('eventsPrereq'),
     subQuery: $('subQuery'),
     subQueryDone: $('subQueryDone'),
+    subViewChange: $('subViewChange'),
+    viewerPages: $('viewerPages'),
     subExport: $('subExport'),
     subPrint: $('subPrint'),
     subscribeBtn: $('subscribeBtn'),
@@ -160,6 +162,7 @@
     'autoSubscribe',
     'subQuery',
     'subQueryDone',
+    'subViewChange',
     'subExport',
     'subPrint'
   ]
@@ -291,6 +294,34 @@
   function setViewerState(stateName, text) {
     el.viewerStatus.dataset.state = stateName
     el.viewerStatus.textContent = text
+  }
+
+  /** 页码显示：只更新传入的字段，其余保持 */
+  const viewInfo = { currentPage: null, totalPages: null, activeSheetId: null }
+  function renderViewInfo(patch) {
+    if (patch) {
+      ;['currentPage', 'totalPages', 'activeSheetId'].forEach((key) => {
+        if (patch[key] !== undefined && patch[key] !== null) viewInfo[key] = patch[key]
+      })
+    }
+    const total = viewInfo.totalPages ?? '-'
+    const cur = viewInfo.currentPage
+    let text = cur ? `第 ${cur} / ${total} 页` : `共 ${total} 页`
+    if (viewInfo.activeSheetId) text += ` · ${viewInfo.activeSheetId}`
+    el.viewerPages.textContent = text
+  }
+
+  /** 兜底：事件没带页码（旧版报表系统）时，用 getState 拉一次 */
+  function pullViewInfo() {
+    if (!state.embedUrl || !window.SightReportEmbed) return
+    const instance = sdk()
+    if (!instance) return
+    instance.getState().then(
+      (s) => {
+        if (s && s.totalPages !== undefined) renderViewInfo(s)
+      },
+      () => {}
+    )
   }
 
   function syncSharedMirrors() {
@@ -608,7 +639,7 @@
       '// 已有 iframe 元素时：SightReportEmbed.connect(iframeEl)',
       '',
       'await report.ready()                       // loaded 事件 + getState 轮询兜底',
-      "report.on('report:query-done', (e) => console.log(e.payload.elapsedMs))",
+      "report.on('report:query-done', (e) => console.log(e.payload.elapsedMs, e.payload.totalPages))",
       '',
       'await report.setParameters(' + (el.invokeParams.value.trim() || '{}') + ')   // 合并参数并重新出数',
       'const state = await report.getState()      // 参数/变量/页码/加载状态',
@@ -719,6 +750,8 @@
     el.openNewWindowLink.href = embedUrl
     el.openNewWindowLink.classList.remove('disabled')
     setViewerState('loading', '加载中…')
+    viewInfo.currentPage = viewInfo.totalPages = viewInfo.activeSheetId = null
+    renderViewInfo()
 
     if (state.sdk) {
       try {
@@ -791,6 +824,15 @@
       const elapsed = data.payload && data.payload.elapsedMs
       setViewerState('ready', elapsed ? `已就绪 · ${elapsed}ms` : '已就绪')
     }
+    if (data.name === 'report:query-done' || data.name === 'report:view-change') {
+      renderViewInfo(data.payload || {})
+    }
+    if (
+      data.name === 'report:loaded' ||
+      (data.name === 'report:query-done' && !(data.payload && data.payload.totalPages !== undefined))
+    ) {
+      pullViewInfo()
+    }
     if (data.name === 'report:toolbar-click') {
       const payload = data.payload || {}
       toast(`宿主按钮被点击：${payload.id}（参数见事件面板）`)
@@ -806,6 +848,7 @@
     const events = []
     if (el.subQuery.checked) events.push('report:query')
     if (el.subQueryDone.checked) events.push('report:query-done')
+    if (el.subViewChange.checked) events.push('report:view-change')
     if (el.subExport.checked) events.push('report:export')
     if (el.subPrint.checked) events.push('report:print')
     return events

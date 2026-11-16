@@ -57,6 +57,25 @@ export interface CellValue {
   text: string
 }
 
+/** report:query-done 的 payload：每次查询渲染完成（含首次）发出 */
+export interface QueryDonePayload {
+  parameters: Record<string, unknown>
+  elapsedMs: number
+  /** 本次渲染后的总页数；仅 grid / document，仪表盘与大屏不带。旧版报表系统不带此字段 */
+  totalPages?: number
+}
+
+/**
+ * report:view-change 的 payload：当前页、总页数、sheet 任一变化时发一次（合并为一个事件）。
+ * 字段给的是变化后的完整视图状态；changed 列出本次变化的字段。仅 grid / document。
+ */
+export interface ViewChangePayload {
+  currentPage: number
+  totalPages: number
+  activeSheetId?: string
+  changed: Array<'currentPage' | 'totalPages' | 'activeSheetId'>
+}
+
 /** getExportFile 的结果 */
 export interface ExportFile {
   /** 文件内容；经 postMessage 传过来只传引用、不复制字节 */
@@ -145,7 +164,7 @@ export interface MountOptions {
 export interface SightReportInstance {
   /** 等首次加载完成（loaded 事件 + getState 轮询兜底，加载失败或超时 reject） */
   ready(): Promise<HostEventEnvelope>
-  /** 事件监听；过程性事件（report:query/query-done/export/print/resize）自动订阅 */
+  /** 事件监听；过程性事件（report:query/query-done/view-change/export/print/resize）自动订阅 */
   on(name: string, handler: (envelope: HostEventEnvelope) => void): this
   once(name: string, handler: (envelope: HostEventEnvelope) => void): this
   off(name: string, handler: (envelope: HostEventEnvelope) => void): this

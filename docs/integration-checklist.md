@@ -29,6 +29,7 @@
 - [ ] `toolbarItems`（如 `-license,-timing,-query`）隐藏 / 显示的按钮符合预期；宿主自己的查询按钮调 `query()` 能出数
 - [ ] 勾「加示例自定义按钮」打开：工具栏出现「提交审批」「帮助」，点击后事件面板收到 `report:toolbar-click`，payload 带 `id` 与当前参数
 - [ ] `zoom=fitWidth`：宽表缩小到正好铺满 iframe、没有横向滚动条；拖动改变 iframe 宽度后自动重新缩放
+- [ ] 报表预览标题栏显示「共 N 页」；翻页 / 切 sheet 后看到 `report:view-change`（需报表系统支持，旧版靠 `getState` 兜底只显示总页数）
 - [ ] 点击「订阅所选」后，在报表里查询/导出能看到 `report:query` / `report:export`
 - [ ] （可选）配了「发送事件」链接的单元格，点击后能收到自定义事件与 payload
 - [ ] 宿主调用面板：`getState`、`setParameters`、`getCellValue` 均返回预期结果；`setZoom` 切换后 `getState().zoom` 随之变化
