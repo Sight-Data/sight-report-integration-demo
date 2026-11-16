@@ -358,7 +358,6 @@ await report.reload()                         // 重新取签名 URL 并重载
 | `export(format)` / `print(command \| { printer, copies, command, pages })` | 受理即回，完成看对应事件；`pages` 只打指定页，见下方「指定页」 |
 | `getExportFile(format, { maxBytes, timeoutMs, pages })` | 拿到文件才 resolve，回 `{ blob, fileName, contentType, size, format }`；与工具栏导出同一份文件。见下方「取文件内容」 |
 | `getParameters(names?, { raw })` | 读参数。`names` 省略＝全给，挑不到的键不出现在结果里；`raw` 只对仪表盘有区别（缺省是含日期展开与联动叠加的**生效值**） |
-| `onStateChange(handler, { intervalMs })` | 监听页码 / 总页数 / loading / sheet / 缩放变化，`handler(state, prev)`，返回取消函数。报表侧暂无页码推送事件，SDK 轮询 `getState`，有变化才回调 |
 | `getState()` | 先看 `fileType`：grid / document 回参数、变量、页码、sheet、显示比例（`zoom` 设定值、`scale` 实际缩放比）；dashboard 回页签、联动、数据更新时间 |
 | `setZoom(zoom)` | 显示比例：`'fitWidth'` 或百分比（`75` / `'75%'`），与工具栏「显示比例」下拉同一状态，工具栏隐藏时也能调 —— **grid / document** |
 | `setSheet(sheetId)` | 多 sheet（页签）报表切换 —— **仅 grid** |
